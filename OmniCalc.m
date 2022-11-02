@@ -46,3 +46,15 @@ cd_lower = 0.32; % Lower Section Coeffient of Drag
 cd_upper = 0.32; % Upper Section Coeffient of Drag
 cd_fin = 0.09; % Fin Coeffient of Drag
 
+%% Flight parameters
+burnout_AGL = 1477; % predicted burnout altitude above ground level, ft
+apogee_AGL = 4099; % predicted highest point of flight above ground level, ft
+main_AGL = 600; % predectied altitude above ground level, ft
+
+Max_Vel = 58; % the predicted maximum velocity of the rocket, ft
+Max_drift = 2500; % maximum allowable drift, ft
+
+%% Launch Site Parameters
+launch_MSL = 900; % altitude of the launch site above mean sea level, ft
+temperature = 70; % ambient temperature of the launch site, F
+max_wind_vel = 20; % maximum allowable wind speed, mph
