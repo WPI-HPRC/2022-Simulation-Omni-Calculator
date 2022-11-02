@@ -13,8 +13,8 @@ M = 0.02896968; % molar mass of air, kg/mol
 
 %Rocket Constants
 
-R_combust = 119.2; % gas constant of the motor combustion products, J/(kg*K)
-T_combust = 1837.2; % temperature of the motor combustion prodects, K
+R_combust = 356; % gas constant of the motor combustion products, J/(kg*K)
+T_combust = 2773; % temperature of the motor combustion prodects, K
 
 % I love bees
 
