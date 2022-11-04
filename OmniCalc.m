@@ -112,5 +112,37 @@ launch_MSL = launch_MSL*0.3048; % altitude of the launch site above mean sea lev
 temperature = (5/9)*(temperature-32); % ambient temperature of the launch site, (C)
 max_wind_vel = max_wind_vel*0.44704; % maximum allowable wind speed, (m/s)
 
+%% Descent Calculations
+%% Descent Velocities
+
+
+%% Descent Times
+
+
+%% Landing Kinetic Energies
+
+
+%% Downrange Drift
+
+
+%% Ejection Calculations
+%% Pre Separation
+%% Separation Forces
+
+
+%% Shear Pins
+
+
+%% Post Separation
+%% Ejection Charges
+
+
+%% Ejection Velocities
+
+
+%% Parachute Deployment Forces
+
+
+
 
 
