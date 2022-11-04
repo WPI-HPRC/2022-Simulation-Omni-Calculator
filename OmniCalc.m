@@ -1,6 +1,4 @@
 
-%% Rocket Constants
-
 %To do from George: 
 %Double check units on everything, all inputs and outputs in imperial 
 %Test with same CFD numbers (500ft/s) 
@@ -13,6 +11,8 @@
 %Re-derive equations used 
 %Other 
 %Keep velocities at all stages of the parachute 
+
+%% Rocket Constants
 
 R_combust = 356; % gas constant of the motor combustion products, J/(kg*K) %%TODO
 T_combust = 2773; % temperature of the motor combustion prodects, K %%TODO
