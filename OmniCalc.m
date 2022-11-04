@@ -1,16 +1,3 @@
-%% Constants
-
-R = 8314; % universal gas constant, J/(mol*K)
-
-%Environmental Constants
-
-g = 9.81; % acceleration due to Earth's gravity, m/s    
-P0 = 101325; % atmospheric pressure at sea level, Pa
-
-R_air = 287.058; % gas constant of air, J/(kg*K)
-L = 0.00976; % temperature Lapse rate of air, K/m
-M = 0.02896968; % molar mass of air, kg/mol
-
 
 %Rocket Constants
 
@@ -62,9 +49,24 @@ Max_drift = 2500; % maximum allowable drift, ft
 
 %% Launch Site Parameters
 
-launch_MSL = 900; % altitude of the launch site above mean sea level, ft
-temperature = 70; % ambient temperature of the launch site, F
+launch_MSL = 5700; % altitude of the launch site above mean sea level, ft
+temperature = 90; % ambient temperature of the launch site, F
 max_wind_vel = 20; % maximum allowable wind speed, mph
+
+
+%% Constants
+
+R = 8314; % universal gas constant, J/(mol*K)
+
+
+%Environmental Constants
+
+g = 9.81; % acceleration due to Earth's gravity, m/s    
+P0 = 101325; % atmospheric pressure at sea level, Pa
+
+R_air = 287.058; % gas constant of air, J/(kg*K)
+L = 0.00976; % temperature Lapse rate of air, K/m
+M = 0.02896968; % molar mass of air, kg/mol
 
 
 %% Conversions
