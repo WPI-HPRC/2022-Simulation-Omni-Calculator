@@ -12,6 +12,16 @@
 %Other 
 %Keep velocities at all stages of the parachute 
 
+%Livescript in conversion factors - do this ish later tho - T Champ
+%Descent Velocity: Get certain values from Rasaero data
+%Descent Time: Rasaero
+%Landuing Kinetic Energy: We calc
+%Downrange drft: Rasaero
+%Ejection: All us including, Separation Forces, Shear Pins, Ejection Charges, Ejection Velocities, Parachute Deployment Velocities,
+
+
+%% Rocket Constants
+
 %% Rocket Constants
 
 R_combust = 356; % gas constant of the motor combustion products, J/(kg*K) %%TODO
