@@ -1,7 +1,7 @@
 
 %To do from George: 
 %Double check units on everything, all inputs and outputs in imperial 
-%Test with same CFD numbers (500ft/s) 
+%Test with same CFD numbers (500ft/s, plus whatever pressure, density, etc. changes with alt) 
 %General To do: 
 %Improve the program: 
 %Use functions everywhere possible 
