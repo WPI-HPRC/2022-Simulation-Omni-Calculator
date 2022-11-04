@@ -18,7 +18,7 @@
 %Landuing Kinetic Energy: We calc
 %Downrange drft: Rasaero
 %Ejection: All us including, Separation Forces, Shear Pins, Ejection Charges, Ejection Velocities, Parachute Deployment Velocities,
-
+%Cut all the function stuff at the bottom
 
 %% Rocket Constants
 
