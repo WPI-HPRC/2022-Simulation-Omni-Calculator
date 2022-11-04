@@ -1,5 +1,5 @@
 
-%Rocket Constants
+%% Rocket Constants
 
 R_combust = 356; % gas constant of the motor combustion products, J/(kg*K)
 T_combust = 2773; % temperature of the motor combustion prodects, K
@@ -59,7 +59,7 @@ max_wind_vel = 20; % maximum allowable wind speed, mph
 R = 8314; % universal gas constant, J/(mol*K)
 
 
-%Environmental Constants
+%% Environmental Constants
 
 g = 9.81; % acceleration due to Earth's gravity, m/s    
 P0 = 101325; % atmospheric pressure at sea level, Pa
