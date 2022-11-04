@@ -11,6 +11,7 @@ R_air = 287.058; % gas constant of air, J/(kg*K)
 L = 0.00976; % temperature Lapse rate of air, K/m
 M = 0.02896968; % molar mass of air, kg/mol
 
+
 %Rocket Constants
 
 R_combust = 356; % gas constant of the motor combustion products, J/(kg*K)
@@ -18,7 +19,9 @@ T_combust = 2773; % temperature of the motor combustion prodects, K
 
 % I love bees
 
+
 %% Vehicle Parameters
+
 number_of_bees = 10000;
 
 airframe_diameter = 6; % Airframe Diameter (in)
@@ -46,7 +49,9 @@ cd_lower = 0.32; % Lower Section Coeffient of Drag
 cd_upper = 0.32; % Upper Section Coeffient of Drag
 cd_fin = 0.09; % Fin Coeffient of Drag
 
+
 %% Flight parameters
+
 burnout_AGL = 1477; % predicted burnout altitude above ground level, ft
 apogee_AGL = 4099; % predicted highest point of flight above ground level, ft
 main_AGL = 600; % predectied altitude above ground level, ft
@@ -54,7 +59,41 @@ main_AGL = 600; % predectied altitude above ground level, ft
 Max_Vel = 58; % the predicted maximum velocity of the rocket, ft
 Max_drift = 2500; % maximum allowable drift, ft
 
+
 %% Launch Site Parameters
+
 launch_MSL = 900; % altitude of the launch site above mean sea level, ft
 temperature = 70; % ambient temperature of the launch site, F
 max_wind_vel = 20; % maximum allowable wind speed, mph
+
+
+%% Conversions
+
+airframe_diameter = airframe_diameter*0.0254; % Airframe Diameter (m)
+recovery_bay_length = recovery_bay_length*0.0254; % Recovery Bay Length (m)
+coupler_length = coupler_length*0.0254; % Coupler Length (m)
+shock_cord_length = shock_cord_length*0.0254; % Length of Shock Cord (m)
+
+lower_mass = lower_mass*4.44822; % Lower Section Mass (N)
+upper_mass = upper_mass*4.44822; % Upper Section Mass (N)
+
+drouge_diameter = drouge_diameter*0.0254; % Drouge Chute Diameter (m)
+packed_drouge_diameter = packed_drouge_diameter*0.0254; % Packed Drouge Chute Diameter (m)
+lower_main_diameter = lower_main_diameter*0.0254; % Lower Main Chute Diameter (m)
+packed_lower_main_diameter = packed_lower_main_diameter*0.0254; % Packed Lower Main Chute Diameter (m)
+upper_main_diameter = upper_main_diameter*0.0254; % Upper Main Chute Diameter (m)
+packed_upper_main_diameter = packed_upper_main_diameter*0.0254; % Packed Upper Main Chute Diameter (m)
+
+fin_area = fin_area*0.0254*0.0254; % Frontal Fin Area (m^2)
+
+burnout_AGL = burnout_AGL*0.3048; % predicted burnout altitude above ground level, (m)
+apogee_AGL = apogee_AGL*0.3048; % predicted highest point of flight above ground level, (m)
+main_AGL = main_AGL*0.3048; % predectied altitude above ground level, (m)
+
+Max_Vel = Max_Vel*0.3048; % the predicted maximum velocity of the rocket, (m)
+Max_drift = Max_drift*0.3048; % maximum allowable drift, (m)
+
+launch_MSL = launch_MSL*0.3048; % altitude of the launch site above mean sea level, (m)
+temperature = (5/9)*(temperature-32); % ambient temperature of the launch site, (F)
+max_wind_vel = max_wind_vel*0.44704; % maximum allowable wind speed, (mph)
+
