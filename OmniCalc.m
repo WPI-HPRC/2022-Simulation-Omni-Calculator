@@ -94,6 +94,6 @@ Max_Vel = Max_Vel*0.3048; % the predicted maximum velocity of the rocket, (m)
 Max_drift = Max_drift*0.3048; % maximum allowable drift, (m)
 
 launch_MSL = launch_MSL*0.3048; % altitude of the launch site above mean sea level, (m)
-temperature = (5/9)*(temperature-32); % ambient temperature of the launch site, (F)
-max_wind_vel = max_wind_vel*0.44704; % maximum allowable wind speed, (mph)
+temperature = (5/9)*(temperature-32); % ambient temperature of the launch site, (C)
+max_wind_vel = max_wind_vel*0.44704; % maximum allowable wind speed, (m/s)
 
