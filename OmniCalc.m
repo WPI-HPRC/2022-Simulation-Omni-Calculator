@@ -122,20 +122,30 @@ launch_MSL = launch_MSL*0.3048; % altitude of the launch site above mean sea lev
 temperature = (5/9)*(temperature-32); % ambient temperature of the launch site, (C)
 max_wind_vel = max_wind_vel*0.44704; % maximum allowable wind speed, (m/s)
 
+
+%Livescript in conversion factors - do this ish later tho - T Champ
+%Descent Velocity: Get certain values from Rasaero data
+%Descent Time: Rasaero
+%Landuing Kinetic Energy: We calc
+%Downrange drft: Rasaero
+%Ejection: All us including, Separation Forces, Shear Pins, Ejection Charges, Ejection Velocities, Parachute Deployment Velocities,
+%Cut all the function stuff at the bottom
+
 %% Descent Calculations
 %% Descent Velocities
-
+%Get certain values from Rasaero data
 
 %% Descent Times
-
+%Rasaero
 
 %% Landing Kinetic Energies
-
+%We calc
 
 %% Downrange Drift
-
+%Rasaero
 
 %% Ejection Calculations
+%All us including, Separation Forces, Shear Pins, Ejection Charges, Ejection Velocities, Parachute Deployment 
 %% Pre Separation
 %% Separation Forces
 
