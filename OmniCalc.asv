@@ -185,6 +185,7 @@ while(true)
 end
 
 function T = tempurature_at_altitude(T_0,h,h_0,L)
+
     T = T_0 + L*(h-h_0);
 end
 
