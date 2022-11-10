@@ -78,6 +78,8 @@ max_wind_vel = 20; % maximum allowable wind speed, mph %%TODO
 %% Constants
 
 R = 8314; % universal gas constant, J/(mol*K)
+k_b = 1.38E-23; % Boltzman Constant (JK^-1)
+M_a = 0.02897; % Molar Mass of Air (kgmol^-1)
 
 
 %% Environmental Constants
@@ -146,10 +148,12 @@ max_wind_vel = max_wind_vel*0.44704; % maximum allowable wind speed, (m/s)
 %All us including, Separation Forces, Shear Pins, Ejection Charges, Ejection Velocities, Parachute Deployment 
 %% Pre Separation
 %% Separation Forces
-
+    F_upper_lower = drag_force(Cd_fin,rho_max,v_max,A_fin) + drag_force(Cd_lower,rho_max,v_max,A_lower) - drag_force(Cd_upper,rho_max,v_max,A_upper);
+    F_lower_fin = drag_force(Cd_fin,rho_max,v_max,A_fin) - drag_force(Cd_lower,rho_max,v_max,A_lower) - drag_force(Cd_upper,rho_max,v_max,A_upper);
 
 %% Shear Pins
-
+    pins_upper_lower = ceil((F_upper_lower*1.25)/shear_pin_strength);
+    pins_lower_fins = ceil((F_upper_lower*1.25)/shear_pin_strength);
 
 %% Post Separation
 %% Ejection Charges
@@ -163,25 +167,55 @@ max_wind_vel = max_wind_vel*0.44704; % maximum allowable wind speed, (m/s)
 
 %% Vent Hole
 
-t = zeros(1,10000);
-dt = 0.1;
 
-xCurr = [   ]; 
-xRec = zeros(1,length(t));
 
-i=2;
-while(true)
+%% Functions
+function D = drag_force(Cd,rho,v,A)
+    D = (1/2)*Cd*rho*v^2*A;
     
-    k1=vent_hole_dynamics(xCurr)*dt;
-    k2=vent_hole_dynamics(xCurr+1/2*k1)*dt;
-    k3=vent_hole_dynamics(xCurr+1/2*k2)*dt;
-    k4=vent_hole_dynamics(xCurr+k3)*dt;
-    xCurr=xCurr+1/6*k1+1/3*k2+1/3*k3+1/6*k4;
-    
-    t(i)=t(i-1)+dt;
+end
 
-    xRec(i) = xCurr;
-    i=i+1;
+function PRec = vent_hole_pressure(dt,maxTime,P_0,V,k_b,T_0,h,h_0,rho,M_a)
+
+    t = zeros(1,maxTime/dt);
+    
+    N = (P_0*V)/(k_b*T_0);
+    xCurr = N; 
+    PRec = zeros(1,length(t));
+    PRec(1) = P_0;
+    
+    i=2;
+    while(true)
+        
+        T = tempurature_at_altitude(T_0,h(i),h_0,rho);
+        P_out = pressure_at_altitude(P_0,g,M,h(i),h_0,R,T);
+        k1=vent_hole_dynamics(xCurr,V,P_out,M_a,rho,T_0)*dt;
+        k2=vent_hole_dynamics(xCurr+1/2*k1,V,P_out,M_a,rho,T_0)*dt;
+        k3=vent_hole_dynamics(xCurr+1/2*k2,V,P_out,M_a,rho,T_0)*dt;
+        k4=vent_hole_dynamics(xCurr+k3,V,P_out,M_a,rho,T_0)*dt;
+        xCurr=xCurr+1/6*k1+1/3*k2+1/3*k3+1/6*k4;
+        
+        t(i)=t(i-1)+dt;
+
+        N = xCurr;
+        P = (N/V)*k_b*T_0;
+    
+        PRec(i) = P;
+        i=i+1;
+    end
+end
+
+
+function xDot = vent_hole_dynamics(N,V,P_out,M_a,rho,T_0)
+    P_in = (N/V)*k_b*T_0;
+    mDot = mass_flow_rate(A,P_in,P_out,rho);
+
+    NDot = -(N/M_a)*mDot;
+    xDot = NDot;
+end
+
+function mDot = mass_flow_rate(A,P_in,P_out,rho)
+    mDot = A*sqrt(2*rho*(P_in-P_out));
 end
 
 function T = tempurature_at_altitude(T_0,h,h_0,L)
@@ -190,10 +224,5 @@ end
 
 function P = pressure_at_altitude(P_0,g,M,h,h_0,R,T)
     P = P_0*exp((-g*M*(h-h_0))/(R*T));
-end
-
-function xDot = vent_hole_dynamics(x)
-
-    xDot = [];
 end
 
