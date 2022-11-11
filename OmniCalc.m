@@ -23,7 +23,7 @@
 %% Rocket Constants
 
 R_combust = 356; % gas constant of the motor combustion products, J/(kg*K) %%TODO
-T_combust = 2773; % temperature of the motor combustion prodects, K %%TODO
+T_combust = 1833; % temperature of the motor combustion prodects, K %%TODO
 
 % I love bees
 
