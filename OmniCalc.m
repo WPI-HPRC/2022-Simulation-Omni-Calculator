@@ -20,6 +20,9 @@
 %Ejection: All us including, Separation Forces, Shear Pins, Ejection Charges, Ejection Velocities, Parachute Deployment Velocities,
 %Cut all the function stuff at the bottom
 
+%% Data Imput from RASAero
+
+data_table_acc = readtable('.csv');
 %% Rocket Constants
 
 R_combust = 356; % gas constant of the motor combustion products, J/(kg*K) %%TODO
@@ -56,6 +59,8 @@ cd_parachute = 2.2; % Parachute Coeffient of Drag %%TODO
 cd_lower = 0.32; % Lower Section Coeffient of Drag %%TODO
 cd_upper = 0.32; % Upper Section Coeffient of Drag %%TODO
 cd_fin = 0.09; % Fin Coeffient of Drag %%TODO
+
+drag_ratio = 0; % the ratio of drag coefficients of the upper and lower airframe %%TODO
 
 
 %% Flight parameters
@@ -148,8 +153,8 @@ max_wind_vel = max_wind_vel*0.44704; % maximum allowable wind speed, (m/s)
 %All us including, Separation Forces, Shear Pins, Ejection Charges, Ejection Velocities, Parachute Deployment 
 %% Pre Separation
 %% Separation Forces
-    F_upper_lower = drag_force(Cd_fin,rho_max,v_max,A_fin) + drag_force(Cd_lower,rho_max,v_max,A_lower) - drag_force(Cd_upper,rho_max,v_max,A_upper);
-    F_lower_fin = drag_force(Cd_fin,rho_max,v_max,A_fin) - drag_force(Cd_lower,rho_max,v_max,A_lower) - drag_force(Cd_upper,rho_max,v_max,A_upper);
+   % F_upper_lower = drag_force(Cd_fin,rho_max,v_max,A_fin) + drag_force(Cd_lower,rho_max,v_max,A_lower) - drag_force(Cd_upper,rho_max,v_max,A_upper);
+    % F_lower_fin = drag_force(Cd_fin,rho_max,v_max,A_fin) - drag_force(Cd_lower,rho_max,v_max,A_lower) - drag_force(Cd_upper,rho_max,v_max,A_upper);
 
 %% Shear Pins
     pins_upper_lower = ceil((F_upper_lower*1.25)/shear_pin_strength);
@@ -157,7 +162,7 @@ max_wind_vel = max_wind_vel*0.44704; % maximum allowable wind speed, (m/s)
 
 %% Post Separation
 %% Ejection Charges
-
+    Eject_force = 1.5*
 
 %% Ejection Velocities
 

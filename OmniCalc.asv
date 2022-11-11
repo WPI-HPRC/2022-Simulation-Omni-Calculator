@@ -157,7 +157,7 @@ max_wind_vel = max_wind_vel*0.44704; % maximum allowable wind speed, (m/s)
 
 %% Post Separation
 %% Ejection Charges
-
+    Eject_force = 1.5*
 
 %% Ejection Velocities
 
@@ -227,4 +227,6 @@ function P = pressure_at_altitude(P_0,g,M,h,h_0,R,T)
 end
 
 function KE = Kinetic_E(V,m)
+KE = 0.5*m*V^2;
+end
 
