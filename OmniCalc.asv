@@ -133,9 +133,6 @@ max_wind_vel = max_wind_vel*0.44704; % maximum allowable wind speed, (m/s)
 
 internal_volume = internal_volume*(0.0254^3); % Internal volume of the rocket (m^3)
 
-
-%% Rasaero Integration
-
 %Livescript in conversion factors - do this ish later tho - T Champ
 %Descent Velocity: Get certain values from Rasaero data
 %Descent Time: Rasaero
