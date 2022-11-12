@@ -4,8 +4,7 @@
 %Test with same CFD numbers (500ft/s, plus whatever pressure, density, etc. changes with alt) 
 %General To do: 
 %Improve the program: 
-%Use functions everywhere possible 
-%Ask Troy and check in with Corbin 
+%Use functions everywhere possible
 %Remove anything trajectory related 
 %Re-check equations: 
 %Re-derive equations used 
@@ -64,6 +63,7 @@ cd_fin = 0.09; % Fin Coeffient of Drag %%TODO
 
 drag_ratio = 0; % the ratio of drag coefficients of the upper and lower airframe %%TODO
 
+internal_volume = 568.09; % Internal volume of the rocket (in^3)
 
 %% Flight parameters
 
@@ -99,6 +99,14 @@ L = 0.00976; % temperature Lapse rate of air, K/m
 M = 0.02896968; % molar mass of air, kg/mol
 
 
+%% Settings
+
+vent_hole_accuracy = 0.001; % How close internal pressure is to external pressure
+vent_hole_presicion = 0.01; % How precise the vent holes can be machined 
+vent_hole_dt = 0.01; % dt for vent hole calculation (s)
+vent_hole_maxTimeSteps = 300; % Max time for vent hole calculation (s)
+
+
 %% Conversions
 
 airframe_diameter = airframe_diameter*0.0254; % Airframe Diameter (m)
@@ -129,6 +137,10 @@ launch_MSL = launch_MSL*0.3048; % altitude of the launch site above mean sea lev
 temperature = (5/9)*(temperature-32); % ambient temperature of the launch site, (C)
 max_wind_vel = max_wind_vel*0.44704; % maximum allowable wind speed, (m/s)
 
+internal_volume = internal_volume*(0.0254^3); % Internal volume of the rocket (m^3)
+
+
+%% Rasaero Integration
 
 %Livescript in conversion factors - do this ish later tho - T Champ
 %Descent Velocity: Get certain values from Rasaero data
@@ -174,7 +186,14 @@ max_wind_vel = max_wind_vel*0.44704; % maximum allowable wind speed, (m/s)
 
 %% Vent Hole
 
-
+vent_hole_diameter = vent_hole_presicion; % First Guess for vent hole diameter
+while(true)
+    PRec = vent_hole_pressure(vent_hole_dt,vent_hole_maxTimeSteps,P0,internal_volume,k_b,internal_temperature,altitudes,launch_MSL,M);
+    if(max(PRec)<vent_hole_accuracy)
+        break;
+    end
+    vent_hole_diameter = vent_hole_diameter + vent_hole_presicion;
+end
 
 %% Functions
 function D = drag_force(Cd,rho,v,A)
@@ -182,7 +201,7 @@ function D = drag_force(Cd,rho,v,A)
     
 end
 
-function PRec = vent_hole_pressure(dt,maxTime,P_0,V,k_b,T_0,h,h_0,rho,M_a)
+function PRec = vent_hole_pressure(dt,maxTime,P_0,V,k_b,T_0,altitude,h_0,rho,M_a)
 
     t = zeros(1,maxTime/dt);
     
@@ -194,8 +213,8 @@ function PRec = vent_hole_pressure(dt,maxTime,P_0,V,k_b,T_0,h,h_0,rho,M_a)
     i=2;
     while(true)
         
-        T = tempurature_at_altitude(T_0,h(i),h_0,rho);
-        P_out = pressure_at_altitude(P_0,g,M,h(i),h_0,R,T);
+        T = tempurature_at_altitude(T_0,altitude(i),h_0,rho);
+        P_out = pressure_at_altitude(P_0,g,M,altitude(i),h_0,R,T);
         k1=vent_hole_dynamics(xCurr,V,P_out,M_a,rho,T_0)*dt;
         k2=vent_hole_dynamics(xCurr+1/2*k1,V,P_out,M_a,rho,T_0)*dt;
         k3=vent_hole_dynamics(xCurr+1/2*k2,V,P_out,M_a,rho,T_0)*dt;
@@ -207,7 +226,7 @@ function PRec = vent_hole_pressure(dt,maxTime,P_0,V,k_b,T_0,h,h_0,rho,M_a)
         N = xCurr;
         P = (N/V)*k_b*T_0;
     
-        PRec(i) = P;
+        PRec(i) = abs((P-P_0)/P_0);
         i=i+1;
     end
 end
