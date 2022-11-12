@@ -22,7 +22,9 @@
 
 %% Data Imput from RASAero
 
-data_table_acc = readtable('.csv');
+RASdata = readmatrix('Flight Test.CSV');
+altitudes = RASdata(:,23);
+
 %% Rocket Constants
 
 R_combust = 356; % gas constant of the motor combustion products, J/(kg*K) %%TODO
@@ -162,7 +164,7 @@ max_wind_vel = max_wind_vel*0.44704; % maximum allowable wind speed, (m/s)
 
 %% Post Separation
 %% Ejection Charges
-    Eject_force = 1.5*
+    Eject_force = 1.5;
 
 %% Ejection Velocities
 
