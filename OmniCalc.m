@@ -1,3 +1,4 @@
+clear; close all; clc;
 
 %To do from George: 
 %Double check units on everything, all inputs and outputs in imperial 
@@ -140,13 +141,8 @@ internal_volume = internal_volume*(0.0254^3); % Internal volume of the rocket (m
 
 %% Rasaero Integration
 
-%Livescript in conversion factors - do this ish later tho - T Champ
-%Descent Velocity: Get certain values from Rasaero data
-%Descent Time: Rasaero
-%Landuing Kinetic Energy: We calc
-%Downrange drft: Rasaero
-%Ejection: All us including, Separation Forces, Shear Pins, Ejection Charges, Ejection Velocities, Parachute Deployment Velocities,
-%Cut all the function stuff at the bottom
+
+
 
 %% Descent Calculations
 %% Descent Velocities
