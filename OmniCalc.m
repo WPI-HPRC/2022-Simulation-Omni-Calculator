@@ -94,6 +94,7 @@ M_a = 0.02897; % Molar Mass of Air (kgmol^-1)
 
 g = 9.81; % acceleration due to Earth's gravity, m/s    
 P0 = 101325; % atmospheric pressure at sea level, Pa
+rho = 1.225; % atmospheric density at sea level (kg/m^3)
 
 R_air = 287.058; % gas constant of air, J/(kg*K)
 L = 0.00976; % temperature Lapse rate of air, K/m
@@ -103,9 +104,7 @@ M = 0.02896968; % molar mass of air, kg/mol
 %% Settings
 
 vent_hole_accuracy = 0.001; % How close internal pressure is to external pressure
-vent_hole_presicion = 0.01; % How precise the vent holes can be machined 
-vent_hole_dt = 0.01; % dt for vent hole calculation (s)
-vent_hole_maxTimeSteps = 300; % Max time for vent hole calculation (s)
+vent_hole_presicion = 0.01; % How precise the vent holes can be machined
 
 
 %% Conversions
@@ -140,6 +139,7 @@ max_wind_vel = max_wind_vel*0.44704; % maximum allowable wind speed, (m/s)
 
 internal_volume = internal_volume*(0.0254^3); % Internal volume of the rocket (m^3)
 
+altitudes = altitudes.*0.3048;
 
 %% Rasaero Integration
 
@@ -167,8 +167,8 @@ internal_volume = internal_volume*(0.0254^3); % Internal volume of the rocket (m
     % F_lower_fin = drag_force(Cd_fin,rho_max,v_max,A_fin) - drag_force(Cd_lower,rho_max,v_max,A_lower) - drag_force(Cd_upper,rho_max,v_max,A_upper);
 
 %% Shear Pins
-    pins_upper_lower = ceil((F_upper_lower*1.25)/shear_pin_strength);
-    pins_lower_fins = ceil((F_upper_lower*1.25)/shear_pin_strength);
+%     pins_upper_lower = ceil((F_upper_lower*1.25)/shear_pin_strength);
+%     pins_lower_fins = ceil((F_upper_lower*1.25)/shear_pin_strength);
 
 %% Post Separation
 %% Ejection Charges
@@ -182,13 +182,17 @@ internal_volume = internal_volume*(0.0254^3); % Internal volume of the rocket (m
 
 %% Vent Hole
 
-vent_hole_diameter = vent_hole_presicion; % First Guess for vent hole diameter
+internal_temperature = 340;
+
+vent_hole_dt = 0.1;
+vent_hole_maxTimeSteps = length(altitudes);
+vent_hole_diameter = vent_hole_presicion % First Guess for vent hole diameter
 while(true)
-    PRec = vent_hole_pressure(vent_hole_dt,vent_hole_maxTimeSteps,P0,internal_volume,k_b,internal_temperature,altitudes,launch_MSL,M);
+    PRec = vent_hole_pressure(vent_hole_diameter,vent_hole_dt,vent_hole_maxTimeSteps,P0,internal_volume,k_b,internal_temperature,altitudes,rho,launch_MSL,M,g,R);
     if(max(PRec)<vent_hole_accuracy)
         break;
     end
-    vent_hole_diameter = vent_hole_diameter + vent_hole_presicion;
+    vent_hole_diameter = vent_hole_diameter + vent_hole_presicion
 end
 
 %% Functions
@@ -197,24 +201,26 @@ function D = drag_force(Cd,rho,v,A)
     
 end
 
-function PRec = vent_hole_pressure(dt,maxTime,P_0,V,k_b,T_0,altitude,h_0,rho,M_a)
+function PRec = vent_hole_pressure(d,dt,maxTimeSteps,P_0,V,k_b,T_0,altitude,h_0,rho,M_a,g,R)
 
-    t = zeros(1,maxTime/dt);
+    t = zeros(1,maxTimeSteps);
     
     N = (P_0*V)/(k_b*T_0);
     xCurr = N; 
     PRec = zeros(1,length(t));
-    PRec(1) = P_0;
+    PRec(1) = 0;
     
     i=2;
     while(true)
-        
+        if(i>maxTimeSteps)
+            break;
+        end
         T = tempurature_at_altitude(T_0,altitude(i),h_0,rho);
-        P_out = pressure_at_altitude(P_0,g,M,altitude(i),h_0,R,T);
-        k1=vent_hole_dynamics(xCurr,V,P_out,M_a,rho,T_0)*dt;
-        k2=vent_hole_dynamics(xCurr+1/2*k1,V,P_out,M_a,rho,T_0)*dt;
-        k3=vent_hole_dynamics(xCurr+1/2*k2,V,P_out,M_a,rho,T_0)*dt;
-        k4=vent_hole_dynamics(xCurr+k3,V,P_out,M_a,rho,T_0)*dt;
+        P_out = pressure_at_altitude(P_0,g,M_a,altitude(i),h_0,R,T);
+        k1=vent_hole_dynamics(xCurr,V,P_out,M_a,rho,T_0,k_b,d)*dt;
+        k2=vent_hole_dynamics(xCurr+1/2*k1,V,P_out,M_a,rho,T_0,k_b,d)*dt;
+        k3=vent_hole_dynamics(xCurr+1/2*k2,V,P_out,M_a,rho,T_0,k_b,d)*dt;
+        k4=vent_hole_dynamics(xCurr+k3,V,P_out,M_a,rho,T_0,k_b,d)*dt;
         xCurr=xCurr+1/6*k1+1/3*k2+1/3*k3+1/6*k4;
         
         t(i)=t(i-1)+dt;
@@ -222,14 +228,15 @@ function PRec = vent_hole_pressure(dt,maxTime,P_0,V,k_b,T_0,altitude,h_0,rho,M_a
         N = xCurr;
         P = (N/V)*k_b*T_0;
     
-        PRec(i) = abs((P-P_0)/P_0);
+        PRec(i) = P;
         i=i+1;
     end
 end
 
 
-function xDot = vent_hole_dynamics(N,V,P_out,M_a,rho,T_0)
+function xDot = vent_hole_dynamics(N,V,P_out,M_a,rho,T_0,k_b,d)
     P_in = (N/V)*k_b*T_0;
+    A = pi*(d/2)^2;
     mDot = mass_flow_rate(A,P_in,P_out,rho);
 
     NDot = -(N/M_a)*mDot;
