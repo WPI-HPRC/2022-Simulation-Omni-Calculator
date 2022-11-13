@@ -190,14 +190,14 @@ altitudes = altitudes.*0.3048;
 %% Parachute Deployment Forces
 %% E-Bay Temperature
 
-function T_EBay_F = Temp_EBay(ground_wind_speed, Length_of_Ebay, airframe_outside_diameter, Boltz, temperature_K,h) %Worst case temp of EBay, assuming no wind
+function T_EBay_F = Temp_EBay(ground_wind_speed, Length_of_Ebay, airframe_outside_diameter, Boltz, temperature_K,h) %Worst case temp of EBay, assuming no w
 
     %h_forced = 10.45 - ground_wind_speed + 10*sqrt(ground_wind_speed); %This is for the cooling from wind, I've found different sources giving different coefficents,
     SA_Ebay = 2 * pi * Length_of_Ebay * airframe_outside_diameter; % Surface Area of Ebay
     Q_sun = 1360 * 0.5 * SA_Ebay;
     Q_EBay = @(T) ((Emissivity * Boltz * T^4 * SA_Ebay) + (h * SA_Ebay * (T - temperature_K))); %for worst case scenario assume no wind cooling
-    T_EBay_K = fzero(@(T) Q_sun-Q_EBay(T),300);
-    T_EBay_F = ( T_EBay_K - 273.15) * 9/5 + 32;
+    T_EBay = fzero(@(T) Q_sun-Q_EBay(T),300);
+    T_EBay_F = ( T_EBay - 273.15) * 9/5 + 32;
 
 end 
 
