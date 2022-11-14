@@ -11,12 +11,12 @@ l_sec = 19; %in
 l_sec_m = l_sec * 0.0254; %m
 d_sec = 6.17; %in
 d_sec_m = d_sec * 0.0254; %m
-T_amb_F = 110; %F
+T_amb_F = 91; %F
 T_amb = (T_amb_F - 32) * 5/9 + 273.15; %K
 h = 10; % W/m^2k ambient air
 v = 6.5; %Wind speed in m/s
 
-h_forced = 10.45 - v + 10*sqrt(v); %This is for the cooling from wind, I've found different sources giving different coefficents
+%h_forced = 10.45 - v + 10*sqrt(v); %This is for the cooling from wind, I've found different sources giving different coefficents
 
 SA = 2 * pi * l_sec_m * d_sec_m; % SA of tube in sun, .5 of normal
 
