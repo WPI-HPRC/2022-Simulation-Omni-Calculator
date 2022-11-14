@@ -24,6 +24,7 @@ clear; close all; clc;
 
 RASdata = readmatrix('Flight Test.CSV');
 altitudes = RASdata(:,23);
+dt = RASdata(2,1)-RASdata(1,1);
 
 %% Rocket Constants
 
@@ -39,7 +40,8 @@ Emissivity = .84;
 
 number_of_bees = 10000;
 
-airframe_diameter = 6; % Airframe Diameter (in) %%TODO
+airframe_diameter = 6.17; % Airframe Diameter (in)
+electronics_bay_length = 19; %  Electronic Bay Length (in)
 recovery_bay_length = 30; % Recovery Bay Length (in) %%TODO
 coupler_length = 6; % Coupler Length (in) %%TODO
 shock_cord_length = 400; % Length of Shock Cord (in) %%TODO
@@ -86,6 +88,7 @@ Max_drift = 2500; % maximum allowable drift, ft %%TODO
 
 launch_MSL = 5700; % altitude of the launch site above mean sea level, ft %%TODO
 temperature = 110; % ambient temperature of the launch site, F %%TODO
+max_wind_vel = 0; % maximum allowable wind speed, (ft/s) %%TODO
 
 
 %% Constants
@@ -120,6 +123,7 @@ vent_hole_presicion = 0.01*0.0254; % How precise the vent holes can be machined 
 %% Conversions
 
 airframe_diameter = airframe_diameter*0.0254; % Airframe Diameter (m)
+electronics_bay_length = electronics_bay_length*0.0254; %  Electronic Bay Length (m)
 recovery_bay_length = recovery_bay_length*0.0254; % Recovery Bay Length (m)
 coupler_length = coupler_length*0.0254; % Coupler Length (m)
 shock_cord_length = shock_cord_length*0.0254; % Length of Shock Cord (m)
@@ -190,28 +194,14 @@ altitudes = altitudes.*0.3048;
 %% Parachute Deployment Forces
 %% E-Bay Temperature
 
-function T_EBay_F = Temp_EBay(ground_wind_speed, Length_of_Ebay, airframe_outside_diameter, Boltz, temperature_K,h) %Worst case temp of EBay, assuming no wind
 
-    %h_forced = 10.45 - ground_wind_speed + 10*sqrt(ground_wind_speed); %This is for the cooling from wind, I've found different sources giving different coefficents,
-    SA_Ebay = 2 * pi * Length_of_Ebay * airframe_outside_diameter; % Surface Area of Ebay
-    Q_sun = 1360 * 0.5 * SA_Ebay;
-    Q_EBay = @(T) ((Emissivity * Boltz * T^4 * SA_Ebay) + (h * SA_Ebay * (T - temperature_K))); %for worst case scenario assume no wind cooling
-    T_EBay_K = fzero(@(T) Q_sun-Q_EBay(T),300);
-    T_EBay_F = ( T_EBay_K - 273.15) * 9/5 + 32;
-
-end 
 
 
 %% Internal Temperature
 
-Boltz = 5.67*10^-8; % W/m^2K^4
-l_sec = 19; %in
-l_sec_m = l_sec * 0.0254; %m
-d_sec = 6.17; %in
-d_sec_m = d_sec * 0.0254; %m
 h = 10; % W/m^2k
 
-SA = 2 * pi * l_sec_m * d_sec_m; % SA of tube in sun, .5 of normal
+SA = 2 * pi * electronics_bay_length * airframe_diameter; % SA of tube in sun, .5 of normal
 
 Q_sun = 1360 * 0.5 * SA;
 Q_rocket = @(T) ((Emissivity * Boltz * T^4 * SA) + (h * SA * (T - temperature))); 
@@ -220,11 +210,10 @@ T_rocket = fzero(@(T) Q_sun-Q_rocket(T),300);
 
 %% Vent Hole
 
-vent_hole_dt = 0.1;
 vent_hole_maxTimeSteps = length(altitudes);
 vent_hole_diameter = vent_hole_presicion % First Guess for vent hole diameter
 while(true)
-    PRec = vent_hole_pressure(vent_hole_diameter,vent_hole_dt,vent_hole_maxTimeSteps,P0,internal_volume,k_b,T_rocket,altitudes,rho,launch_MSL,M,g,R,N_A);
+    PRec = vent_hole_pressure(vent_hole_diameter,dt,vent_hole_maxTimeSteps,P0,internal_volume,k_b,T_rocket,altitudes,rho,launch_MSL,M,g,R,N_A);
     if(max(PRec)<vent_hole_accuracy)
         break;
     end
@@ -236,6 +225,17 @@ function D = drag_force(Cd,rho,v,A)
     D = (1/2)*Cd*rho*v^2*A;
     
 end
+
+function T_EBay_F = Temp_EBay(ground_wind_speed, Length_of_Ebay, airframe_outside_diameter, Boltz, temperature_K,h) %Worst case temp of EBay, assuming no wind
+
+    %h_forced = 10.45 - ground_wind_speed + 10*sqrt(ground_wind_speed); %This is for the cooling from wind, I've found different sources giving different coefficents,
+    SA_Ebay = 2 * pi * Length_of_Ebay * airframe_outside_diameter; % Surface Area of Ebay
+    Q_sun = 1360 * 0.5 * SA_Ebay;
+    Q_EBay = @(T) ((Emissivity * Boltz * T^4 * SA_Ebay) + (h * SA_Ebay * (T - temperature_K))); %for worst case scenario assume no wind cooling
+    T_EBay_K = fzero(@(T) Q_sun-Q_EBay(T),300);
+    T_EBay_F = ( T_EBay_K - 273.15) * 9/5 + 32;
+
+end 
 
 function PRec = vent_hole_pressure(d,dt,maxTimeSteps,P_0,V,k_b,T_0,altitudes,rho,h_0,M_a,g,R,N_A)
 
@@ -286,7 +286,11 @@ function xDot = vent_hole_dynamics(x,V,M_a,rho,T_0,P_0,k_b,A,h_0,R,g,N_A,dt,altC
 end
 
 function mDot = mass_flow_rate(A,P_in,P_out,rho)
-    mDot = A*sqrt(2*rho*(P_in-P_out));
+    if(P_in-P_out>0)
+        mDot = A*sqrt(2*rho*(P_in-P_out));
+    else
+        mDot = 0;
+    end
 end
 
 function T = tempurature_at_altitude(T_0,h,h_0,L)
@@ -298,6 +302,6 @@ function P = pressure_at_altitude(P_0,g,M,h,h_0,R,T)
 end
 
 function KE = Kinetic_E(V,m)
-KE = 0.5*m*V^2;
+    KE = 0.5*m*V^2;
 end
 
