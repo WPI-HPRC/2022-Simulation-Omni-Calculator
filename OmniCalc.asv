@@ -84,7 +84,7 @@ Max_drift = 2500; % maximum allowable drift, ft %%TODO
 %% Launch Site Parameters
 
 launch_MSL = 5700; % altitude of the launch site above mean sea level, ft %%TODO
-temperature = 91; % ambient temperature of the launch site, F %%TODO
+temperature = 110; % ambient temperature of the launch site, F %%TODO
 max_wind_vel = 0; % maximum allowable wind speed, (ft/s) %%TODO
 
 
@@ -192,6 +192,8 @@ altitudes = altitudes.*0.3048;
 %% Parachute Deployment Forces
 %% E-Bay Temperature
 Ebay_temp = Temp_EBay(ground_wind_speed, Length_of_Ebay, airframe_outside_diameter, Boltz, temperature, h_amb_air, is_wind, Emissivity)
+
+
 %% Vent Hole
 
 vent_hole_maxTimeSteps = length(altitudes);
