@@ -25,9 +25,9 @@ clear; close all; clc;
 RASdata = readmatrix('Flight Test.CSV');
 altitudes = RASdata(:,23).*0.3048;
 Ras_dt = RASdata(2,1)-RASdata(1,1);
-dt = 0.00001;
+dt = Ras_dt;%0.00001;
 altitudes = altitudes_to_apogee(altitudes);
-altitudes = interpolate_alt(altitudes,Ras_dt,dt);
+%altitudes = interpolate_alt(altitudes,Ras_dt,dt);
 t = dt:dt:dt*length(altitudes);
 
 %% Rocket Constants
@@ -195,7 +195,6 @@ altitudes = altitudes.*0.3048;
 %% Ejection Velocities
 
 
-
 %% Parachute Deployment Forces
 %% E-Bay Temperature
 
@@ -221,7 +220,7 @@ while(true)
     PRec = vent_hole_pressure(vent_hole_diameter,dt,vent_hole_maxTimeSteps,P0,internal_volume,k_b,T_rocket,temperature,altitudes,rho,0,M,g,R,N_A,L);
     test = (max(PRec))
     figure()
-    plot(t,PRec)
+    plot(t,PRec./6894.76)
     if(max(PRec)<vent_hole_accuracy)
         break;
     end
@@ -274,8 +273,10 @@ function PRec = vent_hole_pressure(d,dt,maxTimeSteps,P_0,V,k_b,T_0,Tout_0,altitu
     PRec(1) = 0;
     
     i=2;
-    while(i<length(altitudes))
-
+    while(true)
+        if(altitudes(i)<altitudes(i-1))
+            break;
+        end
         k1=vent_hole_dynamics(xCurr,V,M_a,rho,T_0,Tout_0,P_0,k_b,A,h_0,R,g,N_A,L,dt,altitudes(i),altitudes(i+1))*dt;
         k2=vent_hole_dynamics(xCurr+1/2*k1,V,M_a,rho,T_0,Tout_0,P_0,k_b,A,h_0,R,g,N_A,L,dt,altitudes(i),altitudes(i+1))*dt;
         k3=vent_hole_dynamics(xCurr+1/2*k2,V,M_a,rho,T_0,Tout_0,P_0,k_b,A,h_0,R,g,N_A,L,dt,altitudes(i),altitudes(i+1))*dt;
@@ -290,7 +291,7 @@ function PRec = vent_hole_pressure(d,dt,maxTimeSteps,P_0,V,k_b,T_0,Tout_0,altitu
         N = xCurr(1);
         P_in = (N/V)*k_b*T_0;
     
-        PRec(i) = abs((P_in-P_out)/P_out);
+        PRec(i) = T; %abs((P_in-P_out)/P_out);
         i=i+1;
     end
 end
