@@ -30,6 +30,8 @@ altitudes = RASdata(:,23);
 R_combust = 356; % gas constant of the motor combustion products, J/(kg*K) %%TODO
 T_combust = 1833; % temperature of the motor combustion prodects, K %%TODO
 
+Emissivity = .84;
+
 % I love bees
 
 
@@ -79,7 +81,7 @@ Max_drift = 2500; % maximum allowable drift, ft %%TODO
 %% Launch Site Parameters
 
 launch_MSL = 5700; % altitude of the launch site above mean sea level, ft %%TODO
-temperature = 90; % ambient temperature of the launch site, F %%TODO
+temperature = 110; % ambient temperature of the launch site, F %%TODO
 max_wind_vel = 20; % maximum allowable wind speed, mph %%TODO
 
 
@@ -88,6 +90,7 @@ max_wind_vel = 20; % maximum allowable wind speed, mph %%TODO
 R = 8314; % universal gas constant, J/(mol*K)
 k_b = 1.38E-23; % Boltzman Constant (JK^-1)
 M_a = 0.02897; % Molar Mass of Air (kgmol^-1)
+N_A = 6.02E23; % Avagadro's Number (mol^-1)
 
 
 %% Environmental Constants
@@ -103,8 +106,8 @@ M = 0.02896968; % molar mass of air, kg/mol
 
 %% Settings
 
-vent_hole_accuracy = 0.001; % How close internal pressure is to external pressure
-vent_hole_presicion = 0.01; % How precise the vent holes can be machined
+vent_hole_accuracy = 0.01; % How close internal pressure is to external pressure
+vent_hole_presicion = 0.01*0.0254; % How precise the vent holes can be machined (in)
 
 
 %% Conversions
@@ -134,7 +137,7 @@ Max_Vel = Max_Vel*0.3048; % the predicted maximum velocity of the rocket, (m)
 Max_drift = Max_drift*0.3048; % maximum allowable drift, (m)
 
 launch_MSL = launch_MSL*0.3048; % altitude of the launch site above mean sea level, (m)
-temperature = (5/9)*(temperature-32); % ambient temperature of the launch site, (C)
+temperature = (5/9)*(temperature-32) + 273.15; % ambient temperature of the launch site, (K)
 max_wind_vel = max_wind_vel*0.44704; % maximum allowable wind speed, (m/s)
 
 internal_volume = internal_volume*(0.0254^3); % Internal volume of the rocket (m^3)
@@ -180,15 +183,29 @@ altitudes = altitudes.*0.3048;
 %% Parachute Deployment Forces
 
 
-%% Vent Hole
+%% Internal Temperature
 
-internal_temperature = 340;
+Boltz = 5.67*10^-8; % W/m^2K^4
+l_sec = 19; %in
+l_sec_m = l_sec * 0.0254; %m
+d_sec = 6.17; %in
+d_sec_m = d_sec * 0.0254; %m
+h = 10; % W/m^2k
+
+SA = 2 * pi * l_sec_m * d_sec_m; % SA of tube in sun, .5 of normal
+
+Q_sun = 1360 * 0.5 * SA;
+Q_rocket = @(T) ((Emissivity * Boltz * T^4 * SA) + (h * SA * (T - temperature))); 
+
+T_rocket = fzero(@(T) Q_sun-Q_rocket(T),300);
+
+%% Vent Hole
 
 vent_hole_dt = 0.1;
 vent_hole_maxTimeSteps = length(altitudes);
 vent_hole_diameter = vent_hole_presicion % First Guess for vent hole diameter
 while(true)
-    PRec = vent_hole_pressure(vent_hole_diameter,vent_hole_dt,vent_hole_maxTimeSteps,P0,internal_volume,k_b,internal_temperature,altitudes,rho,launch_MSL,M,g,R);
+    PRec = vent_hole_pressure(vent_hole_diameter,vent_hole_dt,vent_hole_maxTimeSteps,P0,internal_volume,k_b,T_rocket,altitudes,rho,launch_MSL,M,g,R,N_A);
     if(max(PRec)<vent_hole_accuracy)
         break;
     end
@@ -201,46 +218,52 @@ function D = drag_force(Cd,rho,v,A)
     
 end
 
-function PRec = vent_hole_pressure(d,dt,maxTimeSteps,P_0,V,k_b,T_0,altitude,h_0,rho,M_a,g,R)
+function PRec = vent_hole_pressure(d,dt,maxTimeSteps,P_0,V,k_b,T_0,altitudes,rho,h_0,M_a,g,R,N_A)
 
     t = zeros(1,maxTimeSteps);
     
+    A = pi*(d/2)^2;
     N = (P_0*V)/(k_b*T_0);
-    xCurr = N; 
+    xCurr = [N,altitudes(1)]; 
     PRec = zeros(1,length(t));
     PRec(1) = 0;
     
     i=2;
     while(true)
-        if(i>maxTimeSteps)
+        if(altitudes(i+1)<altitudes(i))
             break;
         end
-        T = tempurature_at_altitude(T_0,altitude(i),h_0,rho);
-        P_out = pressure_at_altitude(P_0,g,M_a,altitude(i),h_0,R,T);
-        k1=vent_hole_dynamics(xCurr,V,P_out,M_a,rho,T_0,k_b,d)*dt;
-        k2=vent_hole_dynamics(xCurr+1/2*k1,V,P_out,M_a,rho,T_0,k_b,d)*dt;
-        k3=vent_hole_dynamics(xCurr+1/2*k2,V,P_out,M_a,rho,T_0,k_b,d)*dt;
-        k4=vent_hole_dynamics(xCurr+k3,V,P_out,M_a,rho,T_0,k_b,d)*dt;
+        k1=vent_hole_dynamics(xCurr,V,M_a,rho,T_0,P_0,k_b,A,h_0,R,g,N_A,dt,altitudes(i),altitudes(i+1))*dt;
+        k2=vent_hole_dynamics(xCurr+1/2*k1,V,M_a,rho,T_0,P_0,k_b,A,h_0,R,g,N_A,dt,altitudes(i),altitudes(i+1))*dt;
+        k3=vent_hole_dynamics(xCurr+1/2*k2,V,M_a,rho,T_0,P_0,k_b,A,h_0,R,g,N_A,dt,altitudes(i),altitudes(i+1))*dt;
+        k4=vent_hole_dynamics(xCurr+k3,V,M_a,rho,T_0,P_0,k_b,A,h_0,R,g,N_A,dt,altitudes(i),altitudes(i+1))*dt;
         xCurr=xCurr+1/6*k1+1/3*k2+1/3*k3+1/6*k4;
         
         t(i)=t(i-1)+dt;
 
-        N = xCurr;
-        P = (N/V)*k_b*T_0;
+        T = tempurature_at_altitude(T_0,altitudes(i),h_0,rho);
+        P_out = pressure_at_altitude(P_0,g,M_a,altitudes(i+1),h_0,R,T);
+
+        N = xCurr(1);
+        P_in = (N/V)*k_b*T_0;
     
-        PRec(i) = P;
+        PRec(i) = abs((P_in-P_out)/P_out);
         i=i+1;
     end
 end
 
 
-function xDot = vent_hole_dynamics(N,V,P_out,M_a,rho,T_0,k_b,d)
+function xDot = vent_hole_dynamics(x,V,M_a,rho,T_0,P_0,k_b,A,h_0,R,g,N_A,dt,altCurr,altNext)
+    N = x(1); h = x(2);
+    T = tempurature_at_altitude(T_0,h,h_0,rho);
+    P_out = pressure_at_altitude(P_0,g,M_a,h,h_0,R,T);
+
     P_in = (N/V)*k_b*T_0;
-    A = pi*(d/2)^2;
     mDot = mass_flow_rate(A,P_in,P_out,rho);
 
-    NDot = -(N/M_a)*mDot;
-    xDot = NDot;
+    NDot = real(-(N_A/M_a)*mDot);
+    hDot = (altNext-altCurr)/dt;
+    xDot = [NDot,hDot];
 end
 
 function mDot = mass_flow_rate(A,P_in,P_out,rho)
