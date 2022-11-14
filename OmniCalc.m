@@ -20,22 +20,11 @@ clear; close all; clc;
 %Ejection: All us including, Separation Forces, Shear Pins, Ejection Charges, Ejection Velocities, Parachute Deployment Velocities,
 %Cut all the function stuff at the bottom
 
-%% Data Imput from RASAero
-
-RASdata = readmatrix('Flight Test.CSV');
-altitudes = RASdata(:,23).*0.3048;
-Ras_dt = RASdata(2,1)-RASdata(1,1);
-dt = 0.00001;
-altitudes = altitudes_to_apogee(altitudes);
-altitudes = interpolate_alt(altitudes,Ras_dt,dt);
-t = dt:dt:dt*length(altitudes);
 
 %% Rocket Constants
 
 R_combust = 356; % gas constant of the motor combustion products, J/(kg*K) %%TODO
 T_combust = 1833; % temperature of the motor combustion prodects, K %%TODO
-
-Emissivity = .84;
 
 % I love bees
 
@@ -120,8 +109,19 @@ ground_wind_speed = 6.5; %wind speed on the ground in m/s
 
 %% Settings
 
+dt = 0.0001; % Interpolated dt of the Rasaero data (s)
 vent_hole_accuracy = 0.01; % How close internal pressure is to external pressure
-vent_hole_presicion = 0.01*0.0254; % How precise the vent holes can be machined (in)
+vent_hole_presicion = 0.01; % How precise the vent holes can be machined (in)
+
+
+%% Data Imput from RASAero
+
+RASdata = readmatrix('Flight Test.CSV');
+altitudes = (RASdata(:,23).*0.3048)+launch_MSL;
+Ras_dt = RASdata(2,1)-RASdata(1,1);
+altitudes = altitudes_to_apogee(altitudes);
+altitudes = interpolate_alt(altitudes,Ras_dt,dt);
+t = dt:dt:dt*length(altitudes);
 
 
 %% Conversions
@@ -158,10 +158,6 @@ max_wind_vel = max_wind_vel*0.44704; % maximum allowable wind speed, (m/s)
 internal_volume = internal_volume*(0.0254^3); % Internal volume of the rocket (m^3)
 
 altitudes = altitudes.*0.3048;
-
-%% Rasaero Integration
-
-
 
 
 %% Descent Calculations
@@ -218,11 +214,11 @@ T_rocket = fzero(@(T) Q_sun-Q_rocket(T),300);
 vent_hole_maxTimeSteps = length(altitudes);
 vent_hole_diameter = vent_hole_presicion % First Guess for vent hole diameter
 while(true)
-    PRec = vent_hole_pressure(vent_hole_diameter,dt,vent_hole_maxTimeSteps,P0,internal_volume,k_b,T_rocket,temperature,altitudes,rho,0,M,g,R,N_A,L);
+    PRec = vent_hole_pressure(vent_hole_diameter,dt,vent_hole_maxTimeSteps,P0,internal_volume,k_b,T_rocket,temperature,altitudes,rho,launch_MSL,M,g,R/1000,N_A,L);
     test = (max(PRec))
-    figure()
-    plot(t,PRec)
     if(max(PRec)<vent_hole_accuracy)
+        figure()
+        plot(t,PRec)
         break;
     end
     vent_hole_diameter = vent_hole_diameter + vent_hole_presicion
@@ -239,10 +235,10 @@ end
 
 function altitudes = interpolate_alt(h,dt_current,dt)
     extra_points = round(dt_current/dt);
-    altitudes = zeros(length(h)*extra_points,1);
+    altitudes = zeros((length(h)-1)*extra_points,1);
     for(i = 1:length(h)-1)
         for(j = 1:extra_points)
-            altitudes(10*(i-1)+j) = h(i) + (j-1)*dt*(h(i+1)-h(i));
+            altitudes(extra_points*(i-1)+j) = h(i) + (j-1)*dt*(h(i+1)-h(i));
         end
     end
 end
@@ -285,7 +281,7 @@ function PRec = vent_hole_pressure(d,dt,maxTimeSteps,P_0,V,k_b,T_0,Tout_0,altitu
         t(i)=t(i-1)+dt;
 
         T = tempurature_at_altitude(Tout_0,altitudes(i),h_0,L);
-        P_out = pressure_at_altitude(P_0,g,M_a,altitudes(i+1),h_0,R,T);
+        P_out = pressure_at_altitude(P_0,g,M_a,altitudes(i+1),0,R,T);
 
         N = xCurr(1);
         P_in = (N/V)*k_b*T_0;
@@ -299,7 +295,7 @@ end
 function xDot = vent_hole_dynamics(x,V,M_a,rho,T_0,Tout_0,P_0,k_b,A,h_0,R,g,N_A,L,dt,altCurr,altNext)
     N = x(1); h = x(2);
     T = tempurature_at_altitude(Tout_0,h,h_0,L);
-    P_out = pressure_at_altitude(P_0,g,M_a,h,h_0,R,T);
+    P_out = pressure_at_altitude(P_0,g,M_a,h,0,R,T);
 
     P_in = (N/V)*k_b*T_0;
     mDot = mass_flow_rate(A,P_in,P_out,rho);
