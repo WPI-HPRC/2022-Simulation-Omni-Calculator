@@ -24,12 +24,14 @@ clear; close all; clc;
 
 RASdata = readmatrix('Flight Test.CSV');
 altitudes = RASdata(:,23);
+dt = RASdata(2,1)-RASdata(1,1);
 
 %% Rocket Constants
 
 R_combust = 356; % gas constant of the motor combustion products, J/(kg*K) %%TODO
 T_combust = 1833; % temperature of the motor combustion prodects, K %%TODO
 
+Emissivity = .84;
 
 % I love bees
 
@@ -38,7 +40,8 @@ T_combust = 1833; % temperature of the motor combustion prodects, K %%TODO
 
 number_of_bees = 10000;
 
-airframe_diameter = 6; % Airframe Diameter (in) %%TODO
+airframe_diameter = 6.17; % Airframe Diameter (in)
+electronics_bay_length = 19; %  Electronic Bay Length (in)
 recovery_bay_length = 30; % Recovery Bay Length (in) %%TODO
 coupler_length = 6; % Coupler Length (in) %%TODO
 shock_cord_length = 400; % Length of Shock Cord (in) %%TODO
@@ -84,8 +87,8 @@ Max_drift = 2500; % maximum allowable drift, ft %%TODO
 %% Launch Site Parameters
 
 launch_MSL = 5700; % altitude of the launch site above mean sea level, ft %%TODO
-temperature_F = 110; % ambient temperature of the launch site, F %%TODO
-max_wind_vel = 20; % maximum allowable wind speed, mph %%TODO
+temperature = 110; % ambient temperature of the launch site, F %%TODO
+max_wind_vel = 0; % maximum allowable wind speed, (ft/s) %%TODO
 
 
 %% Constants
@@ -94,6 +97,7 @@ R = 8314; % universal gas constant, J/(mol*K)
 k_b = 1.38E-23; % Boltzmann Constant (JK^-1)
 Boltz = 5.67*10^-8; % Boltzmann Constant (W/m^2K^4)
 M_a = 0.02897; % Molar Mass of Air (kgmol^-1)
+N_A = 6.02E23; % Avagadro's Number (mol^-1)
 
 
 %% Environmental Constants
@@ -112,13 +116,14 @@ ground_wind_speed = 6.5; %wind speed on the ground in m/s
 
 %% Settings
 
-vent_hole_accuracy = 0.001; % How close internal pressure is to external pressure
-vent_hole_presicion = 0.01; % How precise the vent holes can be machined
+vent_hole_accuracy = 0.01; % How close internal pressure is to external pressure
+vent_hole_presicion = 0.01*0.0254; % How precise the vent holes can be machined (in)
 
 
 %% Conversions
 
 airframe_diameter = airframe_diameter*0.0254; % Airframe Diameter (m)
+electronics_bay_length = electronics_bay_length*0.0254; %  Electronic Bay Length (m)
 recovery_bay_length = recovery_bay_length*0.0254; % Recovery Bay Length (m)
 coupler_length = coupler_length*0.0254; % Coupler Length (m)
 shock_cord_length = shock_cord_length*0.0254; % Length of Shock Cord (m)
@@ -143,8 +148,7 @@ Max_Vel = Max_Vel*0.3048; % the predicted maximum velocity of the rocket, (m)
 Max_drift = Max_drift*0.3048; % maximum allowable drift, (m)
 
 launch_MSL = launch_MSL*0.3048; % altitude of the launch site above mean sea level, (m)
-temperature_C = (5/9)*(temperature_F-32); % ambient temperature of the launch site, (C)
-temperature_K = (temperature_F - 32) * 5/9 + 273.15; %ambient temperature of launch site, (K)
+temperature = (5/9)*(temperature-32) + 273.15; % ambient temperature of the launch site, (K)
 max_wind_vel = max_wind_vel*0.44704; % maximum allowable wind speed, (m/s)
 
 internal_volume = internal_volume*(0.0254^3); % Internal volume of the rocket (m^3)
@@ -190,27 +194,26 @@ altitudes = altitudes.*0.3048;
 %% Parachute Deployment Forces
 %% E-Bay Temperature
 
-function T_EBay_F = Temp_EBay(ground_wind_speed, Length_of_Ebay, airframe_outside_diameter, Boltz, temperature_K,h) %Worst case temp of EBay, assuming no wind
 
-    %h_forced = 10.45 - ground_wind_speed + 10*sqrt(ground_wind_speed); %This is for the cooling from wind, I've found different sources giving different coefficents,
-    SA_Ebay = 2 * pi * Length_of_Ebay * airframe_outside_diameter; % Surface Area of Ebay
-    Q_sun = 1360 * 0.5 * SA_Ebay;
-    Q_EBay = @(T) ((Emissivity * Boltz * T^4 * SA_Ebay) + (h * SA_Ebay * (T - temperature_K))); %for worst case scenario assume no wind cooling
-    T_EBay_K = fzero(@(T) Q_sun-Q_EBay(T),300);
-    T_EBay_F = ( T_EBay_K - 273.15) * 9/5 + 32;
 
-end 
 
+%% Internal Temperature
+
+h = 10; % W/m^2k
+
+SA = 2 * pi * electronics_bay_length * airframe_diameter; % SA of tube in sun, .5 of normal
+
+Q_sun = 1360 * 0.5 * SA;
+Q_rocket = @(T) ((Emissivity * Boltz * T^4 * SA) + (h * SA * (T - temperature))); 
+
+T_rocket = fzero(@(T) Q_sun-Q_rocket(T),300);
 
 %% Vent Hole
 
-internal_temperature = 340;
-
-vent_hole_dt = 0.1;
 vent_hole_maxTimeSteps = length(altitudes);
 vent_hole_diameter = vent_hole_presicion % First Guess for vent hole diameter
 while(true)
-    PRec = vent_hole_pressure(vent_hole_diameter,vent_hole_dt,vent_hole_maxTimeSteps,P0,internal_volume,k_b,internal_temperature,altitudes,rho,launch_MSL,M,g,R);
+    PRec = vent_hole_pressure(vent_hole_diameter,dt,vent_hole_maxTimeSteps,P0,internal_volume,k_b,T_rocket,altitudes,rho,launch_MSL,M,g,R,N_A);
     if(max(PRec)<vent_hole_accuracy)
         break;
     end
@@ -223,50 +226,71 @@ function D = drag_force(Cd,rho,v,A)
     
 end
 
-function PRec = vent_hole_pressure(d,dt,maxTimeSteps,P_0,V,k_b,T_0,altitude,h_0,rho,M_a,g,R)
+function T_EBay_F = Temp_EBay(ground_wind_speed, Length_of_Ebay, airframe_outside_diameter, Boltz, temperature_K,h) %Worst case temp of EBay, assuming no wind
+
+    %h_forced = 10.45 - ground_wind_speed + 10*sqrt(ground_wind_speed); %This is for the cooling from wind, I've found different sources giving different coefficents,
+    SA_Ebay = 2 * pi * Length_of_Ebay * airframe_outside_diameter; % Surface Area of Ebay
+    Q_sun = 1360 * 0.5 * SA_Ebay;
+    Q_EBay = @(T) ((Emissivity * Boltz * T^4 * SA_Ebay) + (h * SA_Ebay * (T - temperature_K))); %for worst case scenario assume no wind cooling
+    T_EBay_K = fzero(@(T) Q_sun-Q_EBay(T),300);
+    T_EBay_F = ( T_EBay_K - 273.15) * 9/5 + 32;
+
+end 
+
+function PRec = vent_hole_pressure(d,dt,maxTimeSteps,P_0,V,k_b,T_0,altitudes,rho,h_0,M_a,g,R,N_A)
 
     t = zeros(1,maxTimeSteps);
     
+    A = pi*(d/2)^2;
     N = (P_0*V)/(k_b*T_0);
-    xCurr = N; 
+    xCurr = [N,altitudes(1)]; 
     PRec = zeros(1,length(t));
     PRec(1) = 0;
     
     i=2;
     while(true)
-        if(i>maxTimeSteps)
+        if(altitudes(i+1)<altitudes(i))
             break;
         end
-        T = tempurature_at_altitude(T_0,altitude(i),h_0,rho);
-        P_out = pressure_at_altitude(P_0,g,M_a,altitude(i),h_0,R,T);
-        k1=vent_hole_dynamics(xCurr,V,P_out,M_a,rho,T_0,k_b,d)*dt;
-        k2=vent_hole_dynamics(xCurr+1/2*k1,V,P_out,M_a,rho,T_0,k_b,d)*dt;
-        k3=vent_hole_dynamics(xCurr+1/2*k2,V,P_out,M_a,rho,T_0,k_b,d)*dt;
-        k4=vent_hole_dynamics(xCurr+k3,V,P_out,M_a,rho,T_0,k_b,d)*dt;
+        k1=vent_hole_dynamics(xCurr,V,M_a,rho,T_0,P_0,k_b,A,h_0,R,g,N_A,dt,altitudes(i),altitudes(i+1))*dt;
+        k2=vent_hole_dynamics(xCurr+1/2*k1,V,M_a,rho,T_0,P_0,k_b,A,h_0,R,g,N_A,dt,altitudes(i),altitudes(i+1))*dt;
+        k3=vent_hole_dynamics(xCurr+1/2*k2,V,M_a,rho,T_0,P_0,k_b,A,h_0,R,g,N_A,dt,altitudes(i),altitudes(i+1))*dt;
+        k4=vent_hole_dynamics(xCurr+k3,V,M_a,rho,T_0,P_0,k_b,A,h_0,R,g,N_A,dt,altitudes(i),altitudes(i+1))*dt;
         xCurr=xCurr+1/6*k1+1/3*k2+1/3*k3+1/6*k4;
         
         t(i)=t(i-1)+dt;
 
-        N = xCurr;
-        P = (N/V)*k_b*T_0;
+        T = tempurature_at_altitude(T_0,altitudes(i),h_0,rho);
+        P_out = pressure_at_altitude(P_0,g,M_a,altitudes(i+1),h_0,R,T);
+
+        N = xCurr(1);
+        P_in = (N/V)*k_b*T_0;
     
-        PRec(i) = P;
+        PRec(i) = abs((P_in-P_out)/P_out);
         i=i+1;
     end
 end
 
 
-function xDot = vent_hole_dynamics(N,V,P_out,M_a,rho,T_0,k_b,d)
+function xDot = vent_hole_dynamics(x,V,M_a,rho,T_0,P_0,k_b,A,h_0,R,g,N_A,dt,altCurr,altNext)
+    N = x(1); h = x(2);
+    T = tempurature_at_altitude(T_0,h,h_0,rho);
+    P_out = pressure_at_altitude(P_0,g,M_a,h,h_0,R,T);
+
     P_in = (N/V)*k_b*T_0;
-    A = pi*(d/2)^2;
     mDot = mass_flow_rate(A,P_in,P_out,rho);
 
-    NDot = -(N/M_a)*mDot;
-    xDot = NDot;
+    NDot = real(-(N_A/M_a)*mDot);
+    hDot = (altNext-altCurr)/dt;
+    xDot = [NDot,hDot];
 end
 
 function mDot = mass_flow_rate(A,P_in,P_out,rho)
-    mDot = A*sqrt(2*rho*(P_in-P_out));
+    if(P_in-P_out>0)
+        mDot = A*sqrt(2*rho*(P_in-P_out));
+    else
+        mDot = 0;
+    end
 end
 
 function T = tempurature_at_altitude(T_0,h,h_0,L)
@@ -278,6 +302,6 @@ function P = pressure_at_altitude(P_0,g,M,h,h_0,R,T)
 end
 
 function KE = Kinetic_E(V,m)
-KE = 0.5*m*V^2;
+    KE = 0.5*m*V^2;
 end
 
