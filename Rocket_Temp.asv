@@ -2,7 +2,6 @@
 % Possibly the h's should be combined? They refer to stagnant and moving
 % air, but in reality it's impossible to have both at once
 %Should we assume that wind can only hit one side of the rocket at a time?
-%If we're looking for a worst case scenario we should assume zero wind.
 
 
 Boltz = 5.67*10^-8; % W/m^2K^4
@@ -24,7 +23,7 @@ SA = 2 * pi * l_sec_m * d_sec_m; % SA of tube in sun, .5 of normal
 Q_sun = 1360 * 0.5 * SA;
 %Q_amb = h * SA * (T - T_amb); %This is really just the cooling if there
 %was no wind
-Q_rocket = @(T) ((Emissivity * Boltz * T^4 * SA) + (h * SA * (T - T_amb)));  
+Q_rocket = @(T) ((Emissivity * Boltz * T^4 * SA) + (h_forced * SA * (T - T_amb))); %Rechect T order here. It could be backwards 
 
 %Q_wind = h_forced * .5*SA *(T-T_amb)
 
