@@ -109,10 +109,10 @@ ground_wind_speed = 6.5; %wind speed on the ground in m/s
 
 %% Settings
 
-dt = 0.01; % Interpolated dt of the Rasaero data (s)
 is_wind = true; %Is there wind?
+dt = 0.01; % Interpolated dt of the Rasaero data (s)
 vent_hole_accuracy = 0.001; % How close internal pressure is to external pressure
-vent_hole_presicion = 0.0001; % How precise the vent holes can be machined (in)
+vent_hole_presicion = 0.0000254; % How precise the vent holes can be machined (in)
 
 
 %% Data Imput from RASAero
@@ -121,9 +121,7 @@ RASdata = readmatrix('Flight Test.CSV');
 altitudes = (RASdata(:,23).*0.3048)+launch_MSL;
 Ras_dt = RASdata(2,1)-RASdata(1,1);
 altitudes = altitudes_to_apogee(altitudes);
-altitudes = interpolate_alt(altitudes,Ras_dt,dt);
-t = dt:dt:dt*length(altitudes);
-
+%altitudes = interpolate_alt(altitudes,Ras_dt,dt);
 
 %% Conversions
 
@@ -214,8 +212,8 @@ end
 
 %% Outputs
 
-fprintf("Worst case e-bay tempurature on pad: %3.0fF\n",(9/5)*(Ebay_temp-273.15)+32);
-fprintf("Minimum vent hole diameter: %4.3fin\n",vent_hole_diameter*39.3701);
+fprintf("Worst case e-bay tempurature on pad: %3.2fF\n",(9/5)*(Ebay_temp-273.15)+32);
+fprintf("Minimum vent hole diameter: %1.3fin\n",vent_hole_diameter*39.3701);
 
 %% Functions
 function altitudes = altitudes_to_apogee(h)
