@@ -39,8 +39,8 @@ recovery_bay_length = 30; % Recovery Bay Length (in) %%TODO
 coupler_length = 6; % Coupler Length (in) %%TODO
 shock_cord_length = 400; % Length of Shock Cord (in) %%TODO
 
-lower_mass = 38; % Lower Section Mass (Ib) %%TODO
-upper_mass = 0.01; % Upper Section Mass (Ib) %%TODO
+upper_mass = 22.5; % Upper Section Mass (Ib)
+lower_mass = 44.9; % Lower Section Mass (Ib) %%TODO
 
 drouge_diameter = 36; % Drouge Chute Diameter (in) %%TODO
 packed_drouge_diameter = 2.85; % Packed Drouge Chute Diameter (in) %%TODO
@@ -54,18 +54,19 @@ upper_main_n = 2.5; % Upper Main Chute Canopy Fill Constant (see Parachute Recov
 
 fin_area = 5.11; % Frontal Fin Area (in^2) %%TODO
 
-cd_parachute = 2.2; % Parachute Coeffient of Drag %%TODO
-cd_lower = 0.32; % Lower Section Coeffient of Drag %%TODO
-cd_upper = 0.32; % Upper Section Coeffient of Drag %%TODO
-cd_fin = 0.09; % Fin Coeffient of Drag %%TODO
+% Found from openRocket component analysis
+cd_lower = 0.254; % Lower Section Coeffient of Drag (cd_payloadbay + cd_ebay + cd_fincan)/(bottom half of rocket)
+cd_upper = 0.109; % Upper Section Coeffient of Drag (cd_upper + cd_nosecone)/(top half of rocket)
 
-drag_ratio = 0; % the ratio of drag coefficients of the upper and lower airframe %%TODO
+cd_parachute = 2.2; % Parachute Coeffient of Drag %%TODO
 
 internal_volume = 568.09; % Internal volume of the rocket (in^3)
 
 Emissivity = .84; %Assuming a white paint rocket
 Length_of_Ebay = 19; %Length of electronics bay in (in) %%Make sure this is the correct section name!!
-airframe_outside_diameter= 6.17; %diameter of the rocket 
+airframe_outside_diameter= 6.17; %diameter of the rocket (in)
+
+shear_pin_strength = 178; % Tensile strength of shear pins (N) TODO
 
 %% Flight parameters
 
@@ -73,7 +74,6 @@ burnout_AGL = 1477; % predicted burnout altitude above ground level, ft %%TODO
 apogee_AGL = 4099; % predicted highest point of flight above ground level, ft %%TODO
 main_AGL = 600; % predectied altitude above ground level, ft %%TODO
 
-Max_Vel = 58; % the predicted maximum velocity of the rocket, ft %%TODO
 Max_drift = 2500; % maximum allowable drift, ft %%TODO
 
 
@@ -109,9 +109,10 @@ ground_wind_speed = 6.5; %wind speed on the ground in m/s
 
 %% Settings
 
+shear_pin_safety_factor = 2; % Safety factor for number of shear pins
 is_wind = true; %Is there wind?
 dt = 0.01; % Interpolated dt of the Rasaero data (s)
-vent_hole_accuracy = 0.001; % How close internal pressure is to external pressure
+vent_hole_accuracy = 0.0001; % How close internal pressure is to external pressure
 vent_hole_presicion = 0.0000254; % How precise the vent holes can be machined (in)
 
 
@@ -131,8 +132,8 @@ recovery_bay_length = recovery_bay_length*0.0254; % Recovery Bay Length (m)
 coupler_length = coupler_length*0.0254; % Coupler Length (m)
 shock_cord_length = shock_cord_length*0.0254; % Length of Shock Cord (m)
 
-lower_mass = lower_mass*4.44822; % Lower Section Mass (N)
 upper_mass = upper_mass*4.44822; % Upper Section Mass (N)
+lower_mass = lower_mass*4.44822; % Lower Section Mass (N)
 
 drouge_diameter = drouge_diameter*0.0254; % Drouge Chute Diameter (m)
 packed_drouge_diameter = packed_drouge_diameter*0.0254; % Packed Drouge Chute Diameter (m)
@@ -147,7 +148,6 @@ burnout_AGL = burnout_AGL*0.3048; % predicted burnout altitude above ground leve
 apogee_AGL = apogee_AGL*0.3048; % predicted highest point of flight above ground level, (m)
 main_AGL = main_AGL*0.3048; % predectied altitude above ground level, (m)
 
-Max_Vel = Max_Vel*0.3048; % the predicted maximum velocity of the rocket, (m)
 Max_drift = Max_drift*0.3048; % maximum allowable drift, (m)
 
 launch_MSL = launch_MSL*0.3048; % altitude of the launch site above mean sea level, (m)
@@ -158,6 +158,11 @@ internal_volume = internal_volume*(0.0254^3); % Internal volume of the rocket (m
 
 altitudes = altitudes.*0.3048;
 
+
+%% Derived Parameters
+
+total_mass = upper_mass + lower_mass; % Mass of whole rocket (N)
+drag_ratio = cd_upper/cd_lower; % The ratio of drag coefficients of the upper and lower airframe
 
 %% Descent Calculations
 %% Descent Velocities
@@ -175,17 +180,21 @@ altitudes = altitudes.*0.3048;
 %% Ejection Calculations
 %All us including, Separation Forces, Shear Pins, Ejection Charges, Ejection Velocities, Parachute Deployment 
 %% Pre Separation
+%% Max Decelartation
+max_deceleration = abs(min(RASdata(:,16)));
+max_deceleration = max_deceleration*0.3048;
+
 %% Separation Forces
    % F_upper_lower = drag_force(Cd_fin,rho_max,v_max,A_fin) + drag_force(Cd_lower,rho_max,v_max,A_lower) - drag_force(Cd_upper,rho_max,v_max,A_upper);
-    % F_lower_fin = drag_force(Cd_fin,rho_max,v_max,A_fin) - drag_force(Cd_lower,rho_max,v_max,A_lower) - drag_force(Cd_upper,rho_max,v_max,A_upper);
+F_upper_lower = drag_seperation(max_deceleration,total_mass,drag_ratio,lower_mass);
+
 
 %% Shear Pins
-%     pins_upper_lower = ceil((F_upper_lower*1.25)/shear_pin_strength);
-%     pins_lower_fins = ceil((F_upper_lower*1.25)/shear_pin_strength);
+pins_upper_lower = ceil((F_upper_lower*shear_pin_safety_factor)/shear_pin_strength);
 
 %% Post Separation
 %% Ejection Charges
-    Eject_force = 1.5;
+Eject_force = 1.5;
 
 %% Ejection Velocities
 
@@ -212,6 +221,7 @@ end
 
 %% Outputs
 
+fprintf("Number of shear pins for a safety factor of %3.2f: %1f\n",shear_pin_safety_factor,pins_upper_lower);
 fprintf("Worst case e-bay tempurature on pad: %3.2fF\n",(9/5)*(Ebay_temp-273.15)+32);
 fprintf("Minimum vent hole diameter: %1.3fin\n",vent_hole_diameter*39.3701);
 
@@ -232,6 +242,10 @@ function altitudes = interpolate_alt(h,dt_current,dt)
             altitudes(extra_points*(i-1)+j) = h(i) + (j-1)*dt*(h(i+1)-h(i));
         end
     end
+end
+
+function Fsep = drag_seperation(a,M,R,M1)
+    Fsep = a*(M/(1+R)-M1);
 end
 
 function D = drag_force(Cd,rho,v,A)
