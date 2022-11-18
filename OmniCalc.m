@@ -88,7 +88,7 @@ max_wind_vel = 0; % maximum allowable wind speed, (ft/s) %%TODO
 
 R = 8314; % universal gas constant, J/(mol*K)
 k_b = 1.38E-23; % Boltzmann Constant (JK^-1)
-Boltz = 5.67*10^-8; % Boltzmann Constant (W/m^2K^4)
+Boltz = 5.67*10^-8; % Stefan-Boltzmann Constant (W/m^2K^4)
 M_a = 0.02897; % Molar Mass of Air (kgmol^-1)
 N_A = 6.02E23; % Avagadro's Number (mol^-1)
 
