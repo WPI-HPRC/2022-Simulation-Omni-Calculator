@@ -120,8 +120,10 @@ vent_hole_presicion = 0.0000254; % How precise the vent holes can be machined (i
 
 RASdata = readmatrix('Flight Test.CSV');
 altitudes = (RASdata(:,23).*0.3048)+launch_MSL;
+velocities = RASdata(:,19);
 Ras_dt = RASdata(2,1)-RASdata(1,1);
 altitudes = altitudes_to_apogee(altitudes);
+altitudes_posta = velocities_past_apogee(altitudes);
 %altitudes = interpolate_alt(altitudes,Ras_dt,dt);
 
 %% Conversions
@@ -157,6 +159,7 @@ max_wind_vel = max_wind_vel*0.44704; % maximum allowable wind speed, (m/s)
 internal_volume = internal_volume*(0.0254^3); % Internal volume of the rocket (m^3)
 
 altitudes = altitudes.*0.3048;
+altitudes_posta = altitudes_posta.*0.3048;
 
 
 %% Derived Parameters
@@ -166,7 +169,7 @@ drag_ratio = cd_upper/cd_lower; % The ratio of drag coefficients of the upper an
 
 %% Descent Calculations
 %% Descent Velocities
-%Get certain values from Rasaero data
+descent_velocity = velocity_of_descent(altitudes_posta);
 
 %% Descent Times
 %Rasaero
@@ -209,9 +212,12 @@ Ebay_temp = Temp_EBay(ground_wind_speed, Length_of_Ebay, airframe_outside_diamet
 %% Vent Hole
 
 vent_hole_maxTimeSteps = length(altitudes);
+
+t = (0:dt:RASdata(length(altitudes)));
+
 vent_hole_diameter = vent_hole_presicion;
 while(true)
-    PRec = vent_hole_pressure(vent_hole_diameter,dt,vent_hole_maxTimeSteps,P0,internal_volume,k_b,Ebay_temp,temperature,altitudes,rho,launch_MSL,M,g,R/1000,N_A,L);
+    [PRec,P_iRec,P_eRec] = vent_hole_pressure(vent_hole_diameter,dt,vent_hole_maxTimeSteps,P0,internal_volume,k_b,Ebay_temp,temperature,altitudes,rho,launch_MSL,M,g,R/1000,N_A,L);
     if(max(PRec)<vent_hole_accuracy)
         break;
     end
@@ -221,9 +227,18 @@ end
 
 %% Outputs
 
+fprintf("Maximum decleration: %3.0fft/s\n",max_deceleration/0.3048);
 fprintf("Number of shear pins for a safety factor of %3.2f: %1f\n",shear_pin_safety_factor,pins_upper_lower);
 fprintf("Worst case e-bay tempurature on pad: %3.2fF\n",(9/5)*(Ebay_temp-273.15)+32);
 fprintf("Minimum vent hole diameter: %1.3fin\n",vent_hole_diameter*39.3701);
+fprintf("Internal pressure range: %3.2f-%3.2fpsi\n",max(P_iRec)/6894.76,min(P_iRec(1,length(P_iRec)-1))/6894.76);
+fprintf("External pressure range: %3.2f-%3.2fpsi\n",max(P_eRec)/6894.76,min(P_eRec(1,length(P_eRec)-1))/6894.76);
+
+figure()
+plot(t,P_iRec)
+title("Pressure to Apogee")
+xlabel('Time (s)', 'FontSize', 11)
+ylabel('Internal Pressure (Pa)', 'FontSize', 11)
 
 %% Functions
 function altitudes = altitudes_to_apogee(h)
@@ -232,6 +247,14 @@ function altitudes = altitudes_to_apogee(h)
         i=i+1;
     end
     altitudes = h(1:i);
+end
+
+function velocity = velocities_past_apogee(h,v)
+    i=1;
+    while(h(i+1)>h(i))
+        i=i+1;
+    end
+    velocity = v(i:length(v));
 end
 
 function altitudes = interpolate_alt(h,dt_current,dt)
@@ -270,7 +293,7 @@ function T_EBay = Temp_EBay(ground_wind_speed, Length_of_Ebay, airframe_outside_
 
 end 
 
-function PRec = vent_hole_pressure(d,dt,maxTimeSteps,P_0,V,k_b,T_0,Tout_0,altitudes,rho,h_0,M_a,g,R,N_A,L)
+function [PRec,P_iRec,P_eRec] = vent_hole_pressure(d,dt,maxTimeSteps,P_0,V,k_b,T_0,Tout_0,altitudes,rho,h_0,M_a,g,R,N_A,L)
 
     A = pi*(d/2)^2;
     P_out = pressure_at_altitude(P_0,g,M_a,altitudes(1),0,R,Tout_0);
@@ -278,6 +301,12 @@ function PRec = vent_hole_pressure(d,dt,maxTimeSteps,P_0,V,k_b,T_0,Tout_0,altitu
     xCurr = [N,altitudes(1)]; 
     PRec = zeros(1,maxTimeSteps);
     PRec(1) = 0;
+
+    P_iRec = zeros(1,maxTimeSteps);
+    P_iRec(1) = P_out;
+
+    P_eRec = zeros(1,maxTimeSteps);
+    P_eRec(1) = P_out;
     
     i=2;
     while(i<length(altitudes))
@@ -295,8 +324,12 @@ function PRec = vent_hole_pressure(d,dt,maxTimeSteps,P_0,V,k_b,T_0,Tout_0,altitu
         P_in = (N/V)*k_b*T_0;
     
         PRec(i) = (P_in-P_out)/P_out;
+        P_iRec(i) = P_in;
+        P_eRec(i) = P_out;
         i=i+1;
     end
+    P_iRec(length(P_iRec)) = P_iRec(length(P_iRec)-1);
+    P_eRec(length(P_eRec)) = P_eRec(length(P_eRec)-1);
 end
 
 
