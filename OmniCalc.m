@@ -120,10 +120,14 @@ vent_hole_presicion = 0.0000254; % How precise the vent holes can be machined (i
 
 RASdata = readmatrix('Flight Test.CSV');
 altitudes = (RASdata(:,23).*0.3048)+launch_MSL;
-velocities = RASdata(:,19);
+velocities = RASdata(:,18);
+velocities_v = RASdata(:,19);
+velocities_h = RASdata(:,20);
+times = RASdata(:,1);
 Ras_dt = RASdata(2,1)-RASdata(1,1);
-altitudes = altitudes_to_apogee(altitudes);
-altitudes_posta = velocities_past_apogee(altitudes);
+
+altitudes_prea = altitudes_to_apogee(altitudes);
+velocities_v_posta = velocities_past_apogee(altitudes, velocities_v);
 %altitudes = interpolate_alt(altitudes,Ras_dt,dt);
 
 %% Conversions
@@ -158,8 +162,8 @@ max_wind_vel = max_wind_vel*0.44704; % maximum allowable wind speed, (m/s)
 
 internal_volume = internal_volume*(0.0254^3); % Internal volume of the rocket (m^3)
 
-altitudes = altitudes.*0.3048;
-altitudes_posta = altitudes_posta.*0.3048;
+altitudes_prea = altitudes_prea.*0.3048;
+velocities_v_posta = velocities_v_posta.*0.3048;
 
 
 %% Derived Parameters
@@ -169,16 +173,16 @@ drag_ratio = cd_upper/cd_lower; % The ratio of drag coefficients of the upper an
 
 %% Descent Calculations
 %% Descent Velocities
-descent_velocity = velocity_of_descent(altitudes_posta);
+descent_velocity = velocity_of_descent(velocities_v_posta);
 
 %% Descent Times
-%Rasaero
+descent_time = time_of_descent(times,altitudes_prea);
 
 %% Landing Kinetic Energies
-%We calc
+landing_kinetic_energy = kinetic_energy(velocities(length(velocities)),total_mass);
 
 %% Downrange Drift
-%Rasaero
+downrange_drift = drift(velocities_h,Ras_dt);
 
 %% Ejection Calculations
 %All us including, Separation Forces, Shear Pins, Ejection Charges, Ejection Velocities, Parachute Deployment 
@@ -211,13 +215,13 @@ Ebay_temp = Temp_EBay(ground_wind_speed, Length_of_Ebay, airframe_outside_diamet
 
 %% Vent Hole
 
-vent_hole_maxTimeSteps = length(altitudes);
+vent_hole_maxTimeSteps = length(altitudes_prea);
 
-t = (0:dt:RASdata(length(altitudes)));
+t = (0:dt:RASdata(length(altitudes_prea)));
 
 vent_hole_diameter = vent_hole_presicion;
 while(true)
-    [PRec,P_iRec,P_eRec] = vent_hole_pressure(vent_hole_diameter,dt,vent_hole_maxTimeSteps,P0,internal_volume,k_b,Ebay_temp,temperature,altitudes,rho,launch_MSL,M,g,R/1000,N_A,L);
+    [PRec,P_iRec,P_eRec] = vent_hole_pressure(vent_hole_diameter,dt,vent_hole_maxTimeSteps,P0,internal_volume,k_b,Ebay_temp,temperature,altitudes_prea,rho,launch_MSL,M,g,R/1000,N_A,L);
     if(max(PRec)<vent_hole_accuracy)
         break;
     end
@@ -227,18 +231,22 @@ end
 
 %% Outputs
 
-fprintf("Maximum decleration: %3.0fft/s\n",max_deceleration/0.3048);
-fprintf("Number of shear pins for a safety factor of %3.2f: %1f\n",shear_pin_safety_factor,pins_upper_lower);
+fprintf("Descent Velocity: %3.2fft/s\n",descent_velocity/0.3048);
+fprintf("Descent Time: %3.2fs\n",descent_time);
+fprintf("Landing Kinetic Energy: %3.2fNm\n",landing_kinetic_energy);
+fprintf("Downrange Drift: %3.2fft\n",downrange_drift/0.3048);
+fprintf("Maximum decleration: %3.2fft/s\n",max_deceleration/0.3048);
+fprintf("Number of shear pins for a safety factor of %3.2f: %2.0f\n",shear_pin_safety_factor,pins_upper_lower);
 fprintf("Worst case e-bay tempurature on pad: %3.2fF\n",(9/5)*(Ebay_temp-273.15)+32);
 fprintf("Minimum vent hole diameter: %1.3fin\n",vent_hole_diameter*39.3701);
 fprintf("Internal pressure range: %3.2f-%3.2fpsi\n",max(P_iRec)/6894.76,min(P_iRec(1,length(P_iRec)-1))/6894.76);
 fprintf("External pressure range: %3.2f-%3.2fpsi\n",max(P_eRec)/6894.76,min(P_eRec(1,length(P_eRec)-1))/6894.76);
 
-figure()
-plot(t,P_iRec)
-title("Pressure to Apogee")
-xlabel('Time (s)', 'FontSize', 11)
-ylabel('Internal Pressure (Pa)', 'FontSize', 11)
+% figure()
+% plot(t,P_iRec)
+% title("Pressure to Apogee")
+% xlabel('Time (s)', 'FontSize', 11)
+% ylabel('Internal Pressure (Pa)', 'FontSize', 11)
 
 %% Functions
 function altitudes = altitudes_to_apogee(h)
@@ -267,13 +275,30 @@ function altitudes = interpolate_alt(h,dt_current,dt)
     end
 end
 
+function v_descent = velocity_of_descent(velocities)
+    v_descent = abs(min(velocities));
+end
+
+function t_descent = time_of_descent(times,altitudes)
+    t_a = times(length(altitudes));
+    t_f = times(length(times));
+    t_descent = t_f - t_a;
+end
+
+function KE = kinetic_energy(V,m)
+    KE = 0.5*m*V^2;
+end
+
+function downrange_drift = drift(velocities_h,dt)
+    downrange_drift = sum(velocities_h.*dt);
+end
+
 function Fsep = drag_seperation(a,M,R,M1)
     Fsep = a*(M/(1+R)-M1);
 end
 
 function D = drag_force(Cd,rho,v,A)
     D = (1/2)*Cd*rho*v^2*A;
-    
 end
 
 function T_EBay = Temp_EBay(ground_wind_speed, Length_of_Ebay, airframe_outside_diameter, Boltz, temperature, h_amb_air, is_wind, Emissivity) %Worst case temp of EBay, assuming no wind
@@ -356,9 +381,5 @@ end
 
 function P = pressure_at_altitude(P_0,g,M,h,h_0,R,T)
     P = P_0*exp((-g*M*(h-h_0))/(R*T));
-end
-
-function KE = kinetic_energy(V,m)
-    KE = 0.5*m*V^2;
 end
 
