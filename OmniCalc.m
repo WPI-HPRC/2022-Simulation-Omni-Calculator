@@ -85,8 +85,9 @@ acclerations = RASdata(:,16);
 times = RASdata(:,1);
 Ras_dt = RASdata(2,1)-RASdata(1,1);
 
-altitudes_prea = altitudes_to_apogee(altitudes,velocities_v);
-velocities_v_posta = velocities_past_apogee(velocities_v);
+altitudes_prea = varriable_to_apogee(altitudes,velocities_v);
+velocities_v_posta = varriable_past_apogee(velocities_v,velocities_v);
+acclerations_posta = varriable_past_apogee(acclerations,velocities_v);
 %altitudes = interpolate_alt(altitudes,Ras_dt,dt);
 
 %% Conversions
@@ -112,7 +113,7 @@ drag_ratio = cd_upper/cd_lower; % The ratio of drag coefficients of the upper an
 
 %% Descent Calculations
 %% Descent Velocities
-[descent_velocity_main,descent_velocity_drogue] = velocity_of_descent(velocities_v_posta);
+[descent_velocity_main,descent_velocity_drogue] = velocity_of_descent(velocities_v_posta,acclerations_posta);
 
 %% Descent Times
 descent_time = time_of_descent(times,altitudes_prea);
@@ -187,20 +188,20 @@ fprintf("External pressure range: %3.2f-%3.2fpsi\n",max(P_eRec)/6894.76,min(P_eR
 % ylabel('Internal Pressure (Pa)', 'FontSize', 11)
 
 %% Functions
-function altitudes = altitudes_to_apogee(h,v)
+function new_varriable = varriable_to_apogee(varriable,velocities)
     i=1;
-    while(v(i)>=0)
+    while(velocities(i)>=0)
         i=i+1;
     end
-    altitudes = h(1:i);
+    new_varriable = varriable(1:i);
 end
 
-function velocity = velocities_past_apogee(v)
+function new_varriable = varriable_past_apogee(varriable,velocities)
     i=1;
-    while(v(i)>=0)
+    while(velocities(i)>=0)
         i=i+1;
     end
-    velocity = v(i:length(v));
+    new_varriable = varriable(i:length(velocities));
 end
 
 function altitudes = interpolate_alt(h,dt_current,dt)
@@ -213,20 +214,16 @@ function altitudes = interpolate_alt(h,dt_current,dt)
     end
 end
 
-function [v_descent_main,v_descent_drogue] = velocity_of_descent(velocities)
-    v_descent_main = 0;
+function [v_descent_main,v_descent_drogue] = velocity_of_descent(v,a)
+    largest_a_jump = 0;
     v_descent_drogue = 0;
-    under_main = false;
-    for(i = 2:length(velocities))
-        if((velocities(i)-velocities(i-1))/velocities(i)<0.01)
-            if(under_main)
-                v_descent_main = abs(velocities(i));
-            else
-                v_descent_drogue = abs(velocities(i));
-                under_main = true;
-            end
+    for(i = 2:length(v))
+        if(abs(a(i)-a(i-1))>largest_a_jump)
+            largest_a_jump = abs(a(i)-a(i-1));
+            v_descent_drogue = abs(v(i-1));
         end
     end
+    v_descent_main = abs(v(length(v)));
 end
 
 function t_descent = time_of_descent(times,altitudes)
