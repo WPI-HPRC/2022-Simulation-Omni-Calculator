@@ -13,52 +13,23 @@ clear; close all; clc;
 %Keep velocities at all stages of the parachute 
 
 %Livescript in conversion factors - do this ish later tho - T Champ
-%Descent Velocity: Get certain values from Rasaero data
-%Descent Time: Rasaero
-%Landuing Kinetic Energy: We calc
-%Downrange drft: Rasaero
 %Ejection: All us including, Separation Forces, Shear Pins, Ejection Charges, Ejection Velocities, Parachute Deployment Velocities,
-%Cut all the function stuff at the bottom
-
 
 %% Rocket Constants
 
-R_combust = 356; % gas constant of the motor combustion products, J/(kg*K) %%TODO
-T_combust = 1833; % temperature of the motor combustion prodects, K %%TODO
-
-% I love bees
-
+R_combust = 356; % gas constant of the ejection ejection charge combustion products, J/(kg*K) %%TODO
+T_combust = 1833; % temperature of the ejection charge combustion products, K %%TODO
 
 %% Vehicle Parameters
 
-number_of_bees = 10000;
-
-airframe_diameter = 6.17; % Airframe Diameter (in)
-electronics_bay_length = 19; %  Electronic Bay Length (in)
-recovery_bay_length = 30; % Recovery Bay Length (in) %%TODO
-coupler_length = 6; % Coupler Length (in) %%TODO
-shock_cord_length = 400; % Length of Shock Cord (in) %%TODO
+number_of_bees = 10000; % I love bees
 
 upper_mass = 22.5; % Upper Section Mass (Ib)
 lower_mass = 44.9; % Lower Section Mass (Ib) %%TODO
 
-drouge_diameter = 36; % Drouge Chute Diameter (in) %%TODO
-packed_drouge_diameter = 2.85; % Packed Drouge Chute Diameter (in) %%TODO
-drouge_n = 2.5; % Drogue Chute Canopy Fill Constant (see Parachute Recovery Systems Design Manual, Knacke, Table 5-6) %%TODO
-lower_main_diameter = 144; % Lower Main Chute Diameter (in) %%TODO
-packed_lower_main_diameter = 6; % Packed Lower Main Chute Diameter (in) %%TODO
-lower_main_n = 2.5; % Lower Main Chute Canopy Fill Constant (see Parachute Recovery Systems Design Manual, Knacke, Table 5-6) %%TODO
-upper_main_diameter = 144; % Upper Main Chute Diameter (in) %%TODO
-packed_upper_main_diameter = 6; % Packed Upper Main Chute Diameter (in) %%TODO
-upper_main_n = 2.5; % Upper Main Chute Canopy Fill Constant (see Parachute Recovery Systems Design Manual, Knacke, Table 5-6) %%TODO
-
-fin_area = 5.11; % Frontal Fin Area (in^2) %%TODO
-
 % Found from openRocket component analysis
 cd_lower = 0.254; % Lower Section Coeffient of Drag (cd_payloadbay + cd_ebay + cd_fincan)/(bottom half of rocket)
 cd_upper = 0.109; % Upper Section Coeffient of Drag (cd_upper + cd_nosecone)/(top half of rocket)
-
-cd_parachute = 2.2; % Parachute Coeffient of Drag %%TODO
 
 internal_volume = 568.09; % Internal volume of the rocket (in^3)
 
@@ -68,21 +39,11 @@ airframe_outside_diameter= 6.17; %diameter of the rocket (in)
 
 shear_pin_strength = 178; % Tensile strength of shear pins (N) TODO
 
-%% Flight parameters
-
-burnout_AGL = 1477; % predicted burnout altitude above ground level, ft %%TODO
-apogee_AGL = 4099; % predicted highest point of flight above ground level, ft %%TODO
-main_AGL = 600; % predectied altitude above ground level, ft %%TODO
-
-Max_drift = 2500; % maximum allowable drift, ft %%TODO
-
-
 %% Launch Site Parameters
 
 launch_MSL = 5700; % altitude of the launch site above mean sea level, ft %%TODO
 temperature = 91; % ambient temperature of the launch site, F %%TODO
 max_wind_vel = 0; % maximum allowable wind speed, (ft/s) %%TODO
-
 
 %% Constants
 
@@ -91,7 +52,6 @@ k_b = 1.38E-23; % Boltzmann Constant (JK^-1)
 Boltz = 5.67*10^-8; % Stefan-Boltzmann Constant (W/m^2K^4)
 M_a = 0.02897; % Molar Mass of Air (kgmol^-1)
 N_A = 6.02E23; % Avagadro's Number (mol^-1)
-
 
 %% Environmental Constants
 
@@ -106,7 +66,6 @@ M = 0.02896968; % molar mass of air, kg/mol
 h_amb_air = 10; %heat transfer coeff of ambient air W/m^2*K
 ground_wind_speed = 6.5; %wind speed on the ground in m/s
 
-
 %% Settings
 
 shear_pin_safety_factor = 2; % Safety factor for number of shear pins
@@ -114,7 +73,6 @@ is_wind = true; %Is there wind?
 dt = 0.01; % Interpolated dt of the Rasaero data (s)
 vent_hole_accuracy = 0.0001; % How close internal pressure is to external pressure
 vent_hole_presicion = 0.0000254; % How precise the vent holes can be machined (in)
-
 
 %% Data Imput from RASAero
 
@@ -133,29 +91,8 @@ velocities_v_posta = velocities_past_apogee(velocities_v);
 
 %% Conversions
 
-airframe_diameter = airframe_diameter*0.0254; % Airframe Diameter (m)
-electronics_bay_length = electronics_bay_length*0.0254; %  Electronic Bay Length (m)
-recovery_bay_length = recovery_bay_length*0.0254; % Recovery Bay Length (m)
-coupler_length = coupler_length*0.0254; % Coupler Length (m)
-shock_cord_length = shock_cord_length*0.0254; % Length of Shock Cord (m)
-
 upper_mass = upper_mass*4.44822; % Upper Section Mass (N)
 lower_mass = lower_mass*4.44822; % Lower Section Mass (N)
-
-drouge_diameter = drouge_diameter*0.0254; % Drouge Chute Diameter (m)
-packed_drouge_diameter = packed_drouge_diameter*0.0254; % Packed Drouge Chute Diameter (m)
-lower_main_diameter = lower_main_diameter*0.0254; % Lower Main Chute Diameter (m)
-packed_lower_main_diameter = packed_lower_main_diameter*0.0254; % Packed Lower Main Chute Diameter (m)
-upper_main_diameter = upper_main_diameter*0.0254; % Upper Main Chute Diameter (m)
-packed_upper_main_diameter = packed_upper_main_diameter*0.0254; % Packed Upper Main Chute Diameter (m)
-
-fin_area = fin_area*0.0254*0.0254; % Frontal Fin Area (m^2)
-
-burnout_AGL = burnout_AGL*0.3048; % predicted burnout altitude above ground level, (m)
-apogee_AGL = apogee_AGL*0.3048; % predicted highest point of flight above ground level, (m)
-main_AGL = main_AGL*0.3048; % predectied altitude above ground level, (m)
-
-Max_drift = Max_drift*0.3048; % maximum allowable drift, (m)
 
 launch_MSL = launch_MSL*0.3048; % altitude of the launch site above mean sea level, (m)
 temperature = (5/9)*(temperature-32) + 273.15; % ambient temperature of the launch site, (K)
@@ -167,7 +104,6 @@ altitudes_prea = altitudes_prea.*0.3048;
 velocities_v_posta = velocities_v_posta.*0.3048;
 velocities_h = velocities_h.*0.3048;
 acclerations = (acclerations*0.3048)-g;
-
 
 %% Derived Parameters
 
@@ -215,7 +151,6 @@ Eject_force = 1.5;
 
 Ebay_temp = Temp_EBay(ground_wind_speed, Length_of_Ebay, airframe_outside_diameter, Boltz, temperature, h_amb_air, is_wind, Emissivity);
 
-
 %% Vent Hole
 
 vent_hole_maxTimeSteps = length(altitudes_prea);
@@ -230,7 +165,6 @@ while(true)
     end
     vent_hole_diameter = vent_hole_diameter + vent_hole_presicion;
 end
-
 
 %% Outputs
 
