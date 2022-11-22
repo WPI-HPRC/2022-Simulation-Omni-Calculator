@@ -4,14 +4,8 @@ clear; close all; clc;
 %Double check units on everything, all inputs and outputs in imperial 
 %Test with same CFD numbers (500ft/s, plus whatever pressure, density, etc. changes with alt) 
 %General To do: 
-%Improve the program: 
-%Use functions everywhere possible
-%Remove anything trajectory related 
-%Re-check equations: 
-%Re-derive equations used 
-%Other 
-%Keep velocities at all stages of the parachute 
-
+%Cl vs alpha graph (verify finsim results)
+%Base drag (if we run out of things to do)
 %Livescript in conversion factors - do this ish later tho - T Champ
 %Ejection: All us including, Separation Forces, Shear Pins, Ejection Charges, Ejection Velocities, Parachute Deployment Velocities,
 
@@ -71,7 +65,7 @@ ground_wind_speed = 6.5; %wind speed on the ground in m/s
 shear_pin_safety_factor = 2; % Safety factor for number of shear pins
 is_wind = true; %Is there wind?
 dt = 0.01; % Interpolated dt of the Rasaero data (s)
-vent_hole_accuracy = 0.0001; % How close internal pressure is to external pressure
+vent_hole_accuracy = 0.001; % How close internal pressure is to external pressure
 vent_hole_presicion = 0.0000254; % How precise the vent holes can be machined (in)
 
 %% Data Imput from RASAero
@@ -104,7 +98,7 @@ internal_volume = internal_volume*(0.0254^3); % Internal volume of the rocket (m
 altitudes_prea = altitudes_prea.*0.3048;
 velocities_v_posta = velocities_v_posta.*0.3048;
 velocities_h = velocities_h.*0.3048;
-acclerations = (acclerations*0.3048)-g;
+acclerations = (acclerations*0.3048);
 
 %% Derived Parameters
 
@@ -128,8 +122,7 @@ downrange_drift = drift(velocities_h,Ras_dt);
 %All us including, Separation Forces, Shear Pins, Ejection Charges, Ejection Velocities, Parachute Deployment 
 %% Pre Separation
 %% Max Decelartation
-max_deceleration = abs(min(acclerations));
-max_deceleration = max_deceleration*0.3048;
+max_deceleration = abs(min(acclerations+g));
 
 %% Separation Forces
    % F_upper_lower = drag_force(Cd_fin,rho_max,v_max,A_fin) + drag_force(Cd_lower,rho_max,v_max,A_lower) - drag_force(Cd_upper,rho_max,v_max,A_upper);
@@ -167,6 +160,13 @@ while(true)
     vent_hole_diameter = vent_hole_diameter + vent_hole_presicion;
 end
 
+% Density
+
+density_prea = zeros(length(altitudes_prea),1);
+for(i = 1:length(altitudes_prea))
+    density_prea(i) = density_at_altitude(P0,g,M,altitudes_prea(i),0,R/1000,temperature,L);
+end
+
 %% Outputs
 
 fprintf("Descent velocity under main: %3.2fft/s\n",descent_velocity_main/0.3048);
@@ -175,6 +175,7 @@ fprintf("Descent time: %3.2fs\n",descent_time);
 fprintf("Landing kinetic energy: %3.2fNm\n",landing_kinetic_energy);
 fprintf("Downrange drift: %3.2fft\n",downrange_drift/0.3048);
 fprintf("Maximum decleration: %3.2fft/s^2\n",max_deceleration/0.3048);
+fprintf("Speration Force: %3.2fN\n",F_upper_lower);
 fprintf("Number of shear pins for a safety factor of %3.2f: %2.0f\n",shear_pin_safety_factor,pins_upper_lower);
 fprintf("Worst case e-bay tempurature on pad: %3.2fF\n",(9/5)*(Ebay_temp-273.15)+32);
 fprintf("Minimum vent hole diameter: %1.3fin\n",vent_hole_diameter*39.3701);
@@ -328,5 +329,11 @@ end
 
 function P = pressure_at_altitude(P_0,g,M,h,h_0,R,T)
     P = P_0*exp((-g*M*(h-h_0))/(R*T));
+end
+
+function rho = density_at_altitude(P_0,g,M,h,h_0,R,T_0,L) %%TODO
+    T = tempurature_at_altitude(T_0,h,h_0,L);
+    P = pressure_at_altitude(P_0,g,M,h,h_0,R,T);
+    rho = P/(R*T);
 end
 
