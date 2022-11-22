@@ -118,16 +118,17 @@ vent_hole_presicion = 0.0000254; % How precise the vent holes can be machined (i
 
 %% Data Imput from RASAero
 
-RASdata = readmatrix('Flight Test.CSV');
+RASdata = readmatrix('Flight Test2.CSV');
 altitudes = (RASdata(:,23).*0.3048)+launch_MSL;
 velocities = RASdata(:,18);
 velocities_v = RASdata(:,19);
 velocities_h = RASdata(:,20);
+acclerations = RASdata(:,16);
 times = RASdata(:,1);
 Ras_dt = RASdata(2,1)-RASdata(1,1);
 
-altitudes_prea = altitudes_to_apogee(altitudes);
-velocities_v_posta = velocities_past_apogee(altitudes, velocities_v);
+altitudes_prea = altitudes_to_apogee(altitudes,velocities_v);
+velocities_v_posta = velocities_past_apogee(velocities_v);
 %altitudes = interpolate_alt(altitudes,Ras_dt,dt);
 
 %% Conversions
@@ -164,6 +165,8 @@ internal_volume = internal_volume*(0.0254^3); % Internal volume of the rocket (m
 
 altitudes_prea = altitudes_prea.*0.3048;
 velocities_v_posta = velocities_v_posta.*0.3048;
+velocities_h = velocities_h.*0.3048;
+acclerations = (acclerations*0.3048)-g;
 
 
 %% Derived Parameters
@@ -173,7 +176,7 @@ drag_ratio = cd_upper/cd_lower; % The ratio of drag coefficients of the upper an
 
 %% Descent Calculations
 %% Descent Velocities
-descent_velocity = velocity_of_descent(velocities_v_posta);
+[descent_velocity_main,descent_velocity_drogue] = velocity_of_descent(velocities_v_posta);
 
 %% Descent Times
 descent_time = time_of_descent(times,altitudes_prea);
@@ -188,7 +191,7 @@ downrange_drift = drift(velocities_h,Ras_dt);
 %All us including, Separation Forces, Shear Pins, Ejection Charges, Ejection Velocities, Parachute Deployment 
 %% Pre Separation
 %% Max Decelartation
-max_deceleration = abs(min(RASdata(:,16)));
+max_deceleration = abs(min(acclerations));
 max_deceleration = max_deceleration*0.3048;
 
 %% Separation Forces
@@ -231,11 +234,12 @@ end
 
 %% Outputs
 
-fprintf("Descent Velocity: %3.2fft/s\n",descent_velocity/0.3048);
-fprintf("Descent Time: %3.2fs\n",descent_time);
-fprintf("Landing Kinetic Energy: %3.2fNm\n",landing_kinetic_energy);
-fprintf("Downrange Drift: %3.2fft\n",downrange_drift/0.3048);
-fprintf("Maximum decleration: %3.2fft/s\n",max_deceleration/0.3048);
+fprintf("Descent velocity under main: %3.2fft/s\n",descent_velocity_main/0.3048);
+fprintf("Descent velocity under drogue: %3.2fft/s\n",descent_velocity_drogue/0.3048);
+fprintf("Descent time: %3.2fs\n",descent_time);
+fprintf("Landing kinetic energy: %3.2fNm\n",landing_kinetic_energy);
+fprintf("Downrange drift: %3.2fft\n",downrange_drift/0.3048);
+fprintf("Maximum decleration: %3.2fft/s^2\n",max_deceleration/0.3048);
 fprintf("Number of shear pins for a safety factor of %3.2f: %2.0f\n",shear_pin_safety_factor,pins_upper_lower);
 fprintf("Worst case e-bay tempurature on pad: %3.2fF\n",(9/5)*(Ebay_temp-273.15)+32);
 fprintf("Minimum vent hole diameter: %1.3fin\n",vent_hole_diameter*39.3701);
@@ -249,17 +253,17 @@ fprintf("External pressure range: %3.2f-%3.2fpsi\n",max(P_eRec)/6894.76,min(P_eR
 % ylabel('Internal Pressure (Pa)', 'FontSize', 11)
 
 %% Functions
-function altitudes = altitudes_to_apogee(h)
+function altitudes = altitudes_to_apogee(h,v)
     i=1;
-    while(h(i+1)>h(i))
+    while(v(i)>=0)
         i=i+1;
     end
     altitudes = h(1:i);
 end
 
-function velocity = velocities_past_apogee(h,v)
+function velocity = velocities_past_apogee(v)
     i=1;
-    while(h(i+1)>h(i))
+    while(v(i)>=0)
         i=i+1;
     end
     velocity = v(i:length(v));
@@ -275,8 +279,20 @@ function altitudes = interpolate_alt(h,dt_current,dt)
     end
 end
 
-function v_descent = velocity_of_descent(velocities)
-    v_descent = abs(min(velocities));
+function [v_descent_main,v_descent_drogue] = velocity_of_descent(velocities)
+    v_descent_main = 0;
+    v_descent_drogue = 0;
+    under_main = false;
+    for(i = 2:length(velocities))
+        if((velocities(i)-velocities(i-1))/velocities(i)<0.01)
+            if(under_main)
+                v_descent_main = abs(velocities(i));
+            else
+                v_descent_drogue = abs(velocities(i));
+                under_main = true;
+            end
+        end
+    end
 end
 
 function t_descent = time_of_descent(times,altitudes)
