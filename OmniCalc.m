@@ -113,7 +113,8 @@ drag_ratio = cd_upper/cd_lower; % The ratio of drag coefficients of the upper an
 descent_time = time_of_descent(times,altitudes_prea);
 
 %% Landing Kinetic Energies
-landing_kinetic_energy = kinetic_energy(velocities(length(velocities)),total_mass);
+upper_landing_kinetic_energy = kinetic_energy(velocities(length(velocities)),upper_mass);
+lower_landing_kinetic_energy = kinetic_energy(velocities(length(velocities)),lower_mass);
 
 %% Downrange Drift
 downrange_drift = drift(velocities_h,Ras_dt);
@@ -171,10 +172,16 @@ end
 
 fprintf("Descent velocity under main: %3.2fft/s\n",descent_velocity_main/0.3048);
 fprintf("Descent velocity under drogue: %3.2fft/s\n",descent_velocity_drogue/0.3048);
+
 fprintf("Descent time: %3.2fs\n",descent_time);
-fprintf("Landing kinetic energy: %3.2fNm\n",landing_kinetic_energy);
+
+fprintf("Landing kinetic energy of upper section: %3.2fNm\n",upper_landing_kinetic_energy);
+fprintf("Landing kinetic energy of lower section: %3.2fNm\n",lower_landing_kinetic_energy);
+
 fprintf("Downrange drift: %3.2fft\n",downrange_drift/0.3048);
+
 fprintf("Maximum decleration: %3.2fft/s^2\n",max_deceleration/0.3048);
+
 fprintf("Speration Force: %3.2fN\n",F_upper_lower);
 fprintf("Number of shear pins for a safety factor of %3.2f: %2.0f\n",shear_pin_safety_factor,pins_upper_lower);
 fprintf("Worst case e-bay tempurature on pad: %3.2fF\n",(9/5)*(Ebay_temp-273.15)+32);
