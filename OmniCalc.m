@@ -259,7 +259,7 @@ end
 function T_EBay = Temp_EBay(ground_wind_speed, Length_of_Ebay, airframe_outside_diameter, Boltz, temperature, h_amb_air, is_wind, Emissivity) %Worst case temp of EBay, assuming no wind
 
     if is_wind
-        h_forced = 10.45 - ground_wind_speed + 10*sqrt(ground_wind_speed); %This is for the cooling from wind, I've found different sources giving different coefficents,
+        h_forced = 12.12 - 1.16*ground_wind_speed + 11.6*sqrt(ground_wind_speed); %This is for the cooling from wind, I've found different sources giving different coefficents,
         SA_Ebay = 2 * pi * Length_of_Ebay * airframe_outside_diameter; % Surface Area of Ebay
         Q_sun = 1360 * 0.5 * SA_Ebay;
         Q_EBay = @(T) ((Emissivity * Boltz * (T^4-temperature^4) * SA_Ebay) + (h_forced * 0.5*SA_Ebay * (T - temperature))); %Assuming only half of the Surface recieves wind
