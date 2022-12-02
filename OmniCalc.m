@@ -20,6 +20,7 @@ number_of_bees = 10000; % I love bees
 
 upper_mass = 22.5; % Upper Section Mass (Ib)
 lower_mass = 44.9; % Lower Section Mass (Ib) %%TODO
+Rocket_Surface_Area = 4*(91.11 + 531.65 + 26.02); % Total surfaec area of Rocket body (no fins)
 
 % Found from openRocket component analysis
 cd_lower = 0.254; % Lower Section Coeffient of Drag (cd_payloadbay + cd_ebay + cd_fincan)/(bottom half of rocket)
@@ -52,14 +53,18 @@ N_A = 6.02E23; % Avagadro's Number (mol^-1)
 g = 9.81; % acceleration due to Earth's gravity, m/s    
 P0 = 101325; % atmospheric pressure at sea level, Pa
 rho = 1.225; % atmospheric density at sea level (kg/m^3)
+vol = 42069; % volume of air (m^3)
 
 R_air = 287.058; % gas constant of air, J/(kg*K)
 L = 0.00976; % temperature Lapse rate of air, K/m
 M = 0.02896968; % molar mass of air, kg/mol
+Ca_air = .42069; %  SpHeat Air
+M_air = .42069; %kg   Mass air
 
 h_amb_air = 10; %heat transfer coeff of ambient air W/m^2*K
 ground_wind_speed = 6.5; %wind speed on the ground in m/s
 
+Sun = 300; %w/m^2   Heat from the sun
 %% Settings
 
 shear_pin_safety_factor = 2; % Safety factor for number of shear pins
@@ -160,6 +165,9 @@ while(true)
     end
     vent_hole_diameter = vent_hole_diameter + vent_hole_presicion;
 end
+
+%% Rocket Temp over time
+
 
 % Density
 
@@ -272,6 +280,21 @@ function T_EBay = Temp_EBay(ground_wind_speed, Length_of_Ebay, airframe_outside_
     end
 
 end 
+
+%function Tot = stuff
+
+%% Y is up, X is horizontal
+      h_forced_x = 12.12 - 1.16*ground_wind_speed + 11.6*sqrt(ground_wind_speed); %This is for the cooling from wind
+      h_forced_y = 12.12 - 1.16*velocities + 11.6*sqrt(velocities); %This is for the cooling from wind
+      Half_Rocket_SA = Rocket_Surface_Area/2; % Surface Area of Ebay
+      Area_Rocket_Y = pi * (.0254/2)^2; %m^2   Z axis Area of the rocket 
+      Q_sun = Sun * Area_Rocket_Y;%   Heat from the sun applied to rocket
+      Q_Y_cool = h_forced_y * Area_Rocket_Y * (T - temperature);
+      Q_X_cool = h_forced_x * Half_Rocket_SA * (T - temperature);
+      Qrad = boltz * Emissivity *Rocket_Surface_Area * (T^4 - temperature^4);
+      Q = Q_Y_cool + Q_Y_cool + Qrad;
+      T_dot = Q/(Ca_air * M_air)
+
 
 function [PRec,P_iRec,P_eRec] = vent_hole_pressure(d,dt,maxTimeSteps,P_0,V,k_b,T_0,Tout_0,altitudes,rho,h_0,M_a,g,R,N_A,L)
 
