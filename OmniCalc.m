@@ -109,7 +109,7 @@ acclerations = (acclerations*0.3048);
 
 %% Derived Parameters
 
-total_mass = upper_mass + lower_mass; % Mass of whole rocket (N)
+total_mass = upper_mass + lower_mass; % Mass of whole rocket (kg)
 drag_ratio = cd_upper/cd_lower; % The ratio of drag coefficients of the upper and lower airframe
 
 %% Descent Calculations
@@ -191,9 +191,9 @@ end
 
 % Density
 
-density_prea = zeros(length(altitudes_prea),1);
-for(i = 1:length(altitudes_prea))
-    density_prea(i) = density_at_altitude(P0,g,M,altitudes_prea(i),0,R/1000,temperature,L);
+density = zeros(length(altitudes),1);
+for(i = 1:length(altitudes))
+    density(i) = density_at_altitude(P0,g,M,altitudes(i),0,R/1000,temperature,L);
 end
 
 %% Outputs
@@ -320,7 +320,7 @@ end
 function T_dot = temperature_dynamics(T,temperature,ground_wind_speed,velocitiy,Rocket_Surface_Area,Emissivity,sigma,Sun,Ca_air,M_air)
     % Y is up, X is horizontal
     h_forced_x = 12.12 - 1.16*ground_wind_speed + 11.6*sqrt(ground_wind_speed); %This is for the cooling from wind
-    h_forced_y = 12.12 - 1.16*velocitiy + 11.6*sqrt(velocitiy); %This is for the cooling from wind
+    h_forced_y = 12.12 - 1.16*abs(velocitiy) + 11.6*sqrt(abs(velocitiy)); %This is for the cooling from wind
     Half_Rocket_SA = Rocket_Surface_Area/2; % Surface Area of Ebay
     Area_Rocket_Y = pi * (.0254/2)^2; %m^2   Z axis Area of the rocket 
     Q_sun = Sun * Area_Rocket_Y;%   Heat from the sun applied to rocket
@@ -399,6 +399,6 @@ end
 function rho = density_at_altitude(P_0,g,M,h,h_0,R,T_0,L) %%TODO
     T = tempurature_at_altitude(T_0,h,h_0,L);
     P = pressure_at_altitude(P_0,g,M,h,h_0,R,T);
-    rho = P/(R*T);
+    rho = (P*M)/(R*T);
 end
 
