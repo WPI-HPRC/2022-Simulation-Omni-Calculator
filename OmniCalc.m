@@ -226,10 +226,18 @@ fprintf("External pressure range: %3.2f-%3.2fpsi\n",max(P_eRec)/6894.76,min(P_eR
 % ylabel('Internal Pressure (Pa)', 'FontSize', 11)
 
 figure(2)
-plot(times(1:1:length(TRec)-1),(9/5)*(TRec(1:length(TRec)-1)-273.15)+32)
+%plot(times(1:1:length(TRec)-1),(9/5)*(TRec(1:length(TRec)-1)-273.15)+32)
 title("Temp over Flight")
 xlabel('Time (s)', 'FontSize', 11)
 ylabel('Temp (K)', 'FontSize', 11)
+
+
+Ck = (0.981*((7.3*2.2)^(3/2)))/29
+Fsep_drogue = ((.5*.981*108^2)*(0.66*0.97)*1)/21
+Fsep_main = ((.5*.9877*28.4^2)*(7.3*2.2)*1)/21
+
+
+
 
 %% Functions
 function new_varriable = varriable_to_apogee(varriable,velocities)
