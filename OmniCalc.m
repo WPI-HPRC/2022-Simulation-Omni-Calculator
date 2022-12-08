@@ -34,21 +34,18 @@ airframe_outside_diameter= 6.17; %diameter of the rocket (in)
 
 shear_pin_strength = 178; % Tensile strength of shear pins (N) TODO
 
-%% Launch Site Parameters
-
-launch_MSL = 5700; % altitude of the launch site above mean sea level, ft %%TODO
-temperature = 91; % ambient temperature of the launch site, F %%TODO
-max_wind_vel = 0; % maximum allowable wind speed, (ft/s) %%TODO
-
 %% Constants
 
 R = 8314; % universal gas constant, J/(mol*K)
 k_b = 1.38E-23; % Boltzmann Constant (JK^-1)
-Boltz = 5.67*10^-8; % Stefan-Boltzmann Constant (W/m^2K^4)
+sigma = 5.67*10^-8; % Stefan-Boltzmann Constant (W/m^2K^4)
 M_a = 0.02897; % Molar Mass of Air (kgmol^-1)
 N_A = 6.02E23; % Avagadro's Number (mol^-1)
 
 %% Environmental Constants
+
+launch_MSL = 5700; % altitude of the launch site above mean sea level, ft %%TODO
+temperature = 110; % ambient temperature of the launch site, F %%TODO
 
 g = 9.81; % acceleration due to Earth's gravity, m/s    
 P0 = 101325; % atmospheric pressure at sea level, Pa
@@ -64,11 +61,12 @@ M_air = .42069; %kg   Mass air
 h_amb_air = 10; %heat transfer coeff of ambient air W/m^2*K
 ground_wind_speed = 6.5; %wind speed on the ground in m/s
 
-Sun = 300; %w/m^2   Heat from the sun
+Sun = 1360; %w/m^2   Heat from the sun
+
 %% Settings
 
 shear_pin_safety_factor = 2; % Safety factor for number of shear pins
-is_wind = true; %Is there wind?
+is_wind = false; %Is there wind?
 dt = 0.01; % Interpolated dt of the Rasaero data (s)
 vent_hole_accuracy = 0.001; % How close internal pressure is to external pressure
 vent_hole_presicion = 0.0000254; % How precise the vent holes can be machined (in)
@@ -76,7 +74,7 @@ vent_hole_presicion = 0.0000254; % How precise the vent holes can be machined (i
 %% Data Imput from RASAero
 
 RASdata = readmatrix('Flight Test2.CSV');
-altitudes = (RASdata(:,23).*0.3048)+launch_MSL;
+altitudes = (RASdata(:,23).*0.3048)+launch_MSL*0.3048;
 velocities = RASdata(:,18);
 velocities_v = RASdata(:,19);
 velocities_h = RASdata(:,20);
@@ -94,11 +92,15 @@ acclerations_posta = varriable_past_apogee(acclerations,velocities_v);
 upper_mass = upper_mass*4.44822; % Upper Section Mass (N)
 lower_mass = lower_mass*4.44822; % Lower Section Mass (N)
 
+Length_of_Ebay = Length_of_Ebay*0.0254;
+airframe_outside_diameter = airframe_outside_diameter*0.0254;
+
 launch_MSL = launch_MSL*0.3048; % altitude of the launch site above mean sea level, (m)
 temperature = (5/9)*(temperature-32) + 273.15; % ambient temperature of the launch site, (K)
-max_wind_vel = max_wind_vel*0.44704; % maximum allowable wind speed, (m/s)
 
 internal_volume = internal_volume*(0.0254^3); % Internal volume of the rocket (m^3)
+
+Rocket_Surface_Area = Rocket_Surface_Area*0.00064516;
 
 altitudes_prea = altitudes_prea.*0.3048;
 velocities_v_posta = velocities_v_posta.*0.3048;
@@ -149,7 +151,26 @@ Eject_force = 1.5;
 %% Parachute Deployment Forces
 %% E-Bay Temperature
 
-Ebay_temp = Temp_EBay(ground_wind_speed, Length_of_Ebay, airframe_outside_diameter, Boltz, temperature, h_amb_air, is_wind, Emissivity);
+Ebay_temp = Temp_EBay(ground_wind_speed, Length_of_Ebay, airframe_outside_diameter, sigma, temperature, h_amb_air, is_wind, Emissivity,Sun);
+
+%% Rocket Temp over time
+
+TCurr = temperature;
+TRec = zeros(1,length(velocities));
+TRec(1) = TCurr;
+
+i = 2;
+while(i < length(velocities))
+    T_o = tempurature_at_altitude(temperature,altitudes(i),launch_MSL,L);
+    k1=temperature_dynamics(TCurr,T_o,ground_wind_speed,velocities(i),Rocket_Surface_Area,Emissivity,sigma,Sun,Ca_air,M_air)*dt;
+    k2=temperature_dynamics(TCurr+1/2*k1,T_o,ground_wind_speed,velocities(i),Rocket_Surface_Area,Emissivity,sigma,Sun,Ca_air,M_air)*dt;
+    k3=temperature_dynamics(TCurr+1/2*k2,T_o,ground_wind_speed,velocities(i),Rocket_Surface_Area,Emissivity,sigma,Sun,Ca_air,M_air)*dt;
+    k4=temperature_dynamics(TCurr+k3,T_o,ground_wind_speed,velocities(i),Rocket_Surface_Area,Emissivity,sigma,Sun,Ca_air,M_air)*dt;
+    TCurr=TCurr+1/6*k1+1/3*k2+1/3*k3+1/6*k4;
+
+    TRec(i) = TCurr;
+    i = i+1;
+end
 
 %% Vent Hole
 
@@ -166,7 +187,6 @@ while(true)
     vent_hole_diameter = vent_hole_diameter + vent_hole_presicion;
 end
 
-%% Rocket Temp over time
 
 
 % Density
@@ -193,6 +213,8 @@ fprintf("Maximum decleration: %3.2fft/s^2\n",max_deceleration/0.3048);
 fprintf("Speration Force: %3.2fN\n",F_upper_lower);
 fprintf("Number of shear pins for a safety factor of %3.2f: %2.0f\n",shear_pin_safety_factor,pins_upper_lower);
 fprintf("Worst case e-bay tempurature on pad: %3.2fF\n",(9/5)*(Ebay_temp-273.15)+32);
+fprintf("Min e-bay tempurature during flight: %3.2fF\n",((9/5)*((min(TRec(1:length(TRec)-1)))-273.15)+32));
+
 fprintf("Minimum vent hole diameter: %1.3fin\n",vent_hole_diameter*39.3701);
 fprintf("Internal pressure range: %3.2f-%3.2fpsi\n",max(P_iRec)/6894.76,min(P_iRec(1,length(P_iRec)-1))/6894.76);
 fprintf("External pressure range: %3.2f-%3.2fpsi\n",max(P_eRec)/6894.76,min(P_eRec(1,length(P_eRec)-1))/6894.76);
@@ -202,6 +224,12 @@ fprintf("External pressure range: %3.2f-%3.2fpsi\n",max(P_eRec)/6894.76,min(P_eR
 % title("Pressure to Apogee")
 % xlabel('Time (s)', 'FontSize', 11)
 % ylabel('Internal Pressure (Pa)', 'FontSize', 11)
+
+figure(2)
+plot(times(1:1:length(TRec)-1),(9/5)*(TRec(1:length(TRec)-1)-273.15)+32)
+title("Temp over Flight")
+xlabel('Time (s)', 'FontSize', 11)
+ylabel('Temp (K)', 'FontSize', 11)
 
 %% Functions
 function new_varriable = varriable_to_apogee(varriable,velocities)
@@ -264,37 +292,36 @@ function D = drag_force(Cd,rho,v,A)
     D = (1/2)*Cd*rho*v^2*A;
 end
 
-function T_EBay = Temp_EBay(ground_wind_speed, Length_of_Ebay, airframe_outside_diameter, Boltz, temperature, h_amb_air, is_wind, Emissivity) %Worst case temp of EBay, assuming no wind
+function T_EBay = Temp_EBay(ground_wind_speed, Length_of_Ebay, airframe_outside_diameter, Boltz, temperature, h_amb_air, is_wind, Emissivity,Sun) %Worst case temp of EBay, assuming no wind
 
     if is_wind
         h_forced = 12.12 - 1.16*ground_wind_speed + 11.6*sqrt(ground_wind_speed); %This is for the cooling from wind, I've found different sources giving different coefficents,
         SA_Ebay = 2 * pi * Length_of_Ebay * airframe_outside_diameter; % Surface Area of Ebay
-        Q_sun = 1360 * 0.5 * SA_Ebay;
-        Q_EBay = @(T) ((Emissivity * Boltz * (T^4-temperature^4) * SA_Ebay) + (h_forced * 0.5*SA_Ebay * (T - temperature))); %Assuming only half of the Surface recieves wind
+        Q_sun = Sun * 0.5 * SA_Ebay;
+        Q_EBay = @(T) ((Emissivity * Boltz * (T^4) * SA_Ebay) + (h_forced * 0.5*SA_Ebay * (T - temperature))); %Assuming only half of the Surface recieves wind
         T_EBay = fzero(@(T) Q_sun-Q_EBay(T),300);
     else
         SA_Ebay = 2 * pi * Length_of_Ebay * airframe_outside_diameter; % Surface Area of Ebay
         Q_sun = 1360 * 0.5 * SA_Ebay;
-        Q_EBay = @(T) ((Emissivity * Boltz * (T^4-temperature^4) * SA_Ebay) + (h_amb_air * SA_Ebay * (T - temperature))); %for worst case scenario assume no wind cooling
+        Q_EBay = @(T) ((Emissivity * Boltz * (T^4) * SA_Ebay) + (h_amb_air * SA_Ebay * (T - temperature))); %for worst case scenario assume no wind cooling
         T_EBay = fzero(@(T) Q_sun-Q_EBay(T),300);
     end
 
 end 
 
-%function Tot = stuff
-
-%% Y is up, X is horizontal
-      h_forced_x = 12.12 - 1.16*ground_wind_speed + 11.6*sqrt(ground_wind_speed); %This is for the cooling from wind
-      h_forced_y = 12.12 - 1.16*velocities + 11.6*sqrt(velocities); %This is for the cooling from wind
-      Half_Rocket_SA = Rocket_Surface_Area/2; % Surface Area of Ebay
-      Area_Rocket_Y = pi * (.0254/2)^2; %m^2   Z axis Area of the rocket 
-      Q_sun = Sun * Area_Rocket_Y;%   Heat from the sun applied to rocket
-      Q_Y_cool = h_forced_y * Area_Rocket_Y * (T - temperature);
-      Q_X_cool = h_forced_x * Half_Rocket_SA * (T - temperature);
-      Qrad = boltz * Emissivity *Rocket_Surface_Area * (T^4 - temperature^4);
-      Q = Q_Y_cool + Q_Y_cool + Qrad;
-      T_dot = Q/(Ca_air * M_air)
-
+function T_dot = temperature_dynamics(T,temperature,ground_wind_speed,velocitiy,Rocket_Surface_Area,Emissivity,sigma,Sun,Ca_air,M_air)
+    % Y is up, X is horizontal
+    h_forced_x = 12.12 - 1.16*ground_wind_speed + 11.6*sqrt(ground_wind_speed); %This is for the cooling from wind
+    h_forced_y = 12.12 - 1.16*velocitiy + 11.6*sqrt(velocitiy); %This is for the cooling from wind
+    Half_Rocket_SA = Rocket_Surface_Area/2; % Surface Area of Ebay
+    Area_Rocket_Y = pi * (.0254/2)^2; %m^2   Z axis Area of the rocket 
+    Q_sun = Sun * Area_Rocket_Y;%   Heat from the sun applied to rocket
+    Q_Y_cool = h_forced_y * Area_Rocket_Y * (T - temperature);
+    Q_X_cool = h_forced_x * Half_Rocket_SA * (T - temperature);
+    Qrad = sigma * Emissivity *Rocket_Surface_Area * (T^4 - temperature^4);
+    Q = Q_sun - (Q_Y_cool + Q_X_cool + Qrad);
+    T_dot = Q/(Ca_air * M_air);
+end
 
 function [PRec,P_iRec,P_eRec] = vent_hole_pressure(d,dt,maxTimeSteps,P_0,V,k_b,T_0,Tout_0,altitudes,rho,h_0,M_a,g,R,N_A,L)
 
