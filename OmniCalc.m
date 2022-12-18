@@ -26,12 +26,19 @@ Rocket_Surface_Area = 4*(91.11 + 531.65 + 26.02); % Total surfaec area of Rocket
 cd_lower = 0.254; % Lower Section Coeffient of Drag (cd_payloadbay + cd_ebay + cd_fincan)/(bottom half of rocket)
 cd_upper = 0.109; % Upper Section Coeffient of Drag (cd_upper + cd_nosecone)/(top half of rocket)
 
+cd_drogue = 0.97;
+cd_main = 2.2;
+surfacearea_drogue = 0.66;  %m2
+surfacearea_main = 7.3;  %m2
+ 
 internal_volume = 568.09; % Internal volume of the rocket (in^3)
 
 Emissivity = .84; %Assuming a white paint rocket
 Length_of_Ebay = 19; %Length of electronics bay in (in) %%Make sure this is the correct section name!!
+Length_of_RecoveryBay = 22;  %Length of recover bay (in)
 airframe_outside_diameter= 6.17; %diameter of the rocket (in)
-
+airframe_inside_diameter = 6;   %diameter (in)
+airframe_inside_area = pi*(airframe_inside_diameter/2)^2;
 shear_pin_strength = 178; % Tensile strength of shear pins (N) TODO
 
 %% Constants
@@ -76,6 +83,7 @@ vent_hole_presicion = 0.0000254; % How precise the vent holes can be machined (i
 RASdata = readmatrix('Flight Test2.CSV');
 altitudes = (RASdata(:,23).*0.3048)+launch_MSL*0.3048;
 velocities = RASdata(:,18);
+velocitiesconv = (RASdata(:,18).*0.3048);
 velocities_v = RASdata(:,19);
 velocities_h = RASdata(:,20);
 acclerations = RASdata(:,16);
@@ -93,6 +101,7 @@ upper_mass = upper_mass*4.44822; % Upper Section Mass (N)
 lower_mass = lower_mass*4.44822; % Lower Section Mass (N)
 
 Length_of_Ebay = Length_of_Ebay*0.0254;
+Length_of_RecoveryBay = Length_of_RecoveryBay*.0254;
 airframe_outside_diameter = airframe_outside_diameter*0.0254;
 
 launch_MSL = launch_MSL*0.3048; % altitude of the launch site above mean sea level, (m)
@@ -101,7 +110,7 @@ temperature = (5/9)*(temperature-32) + 273.15; % ambient temperature of the laun
 internal_volume = internal_volume*(0.0254^3); % Internal volume of the rocket (m^3)
 
 Rocket_Surface_Area = Rocket_Surface_Area*0.00064516;
-
+airframe_inside_area = airframe_inside_area/1550;
 altitudes_prea = altitudes_prea.*0.3048;
 velocities_v_posta = velocities_v_posta.*0.3048;
 velocities_h = velocities_h.*0.3048;
@@ -139,16 +148,31 @@ F_upper_lower = drag_seperation(max_deceleration,total_mass,drag_ratio,lower_mas
 
 %% Shear Pins
 pins_upper_lower = ceil((F_upper_lower*shear_pin_safety_factor)/shear_pin_strength);
+shear_pin_breaking_force = pins_upper_lower * shear_pin_strength;   %force required to break all the shear pins
 
 %% Post Separation
 %% Ejection Charges
-Eject_force = 1.5;
+ejection_force = shear_pin_breaking_force * 1.5;   %force required to break shear pins with 1.5x safety factor
+ejection_pressure = ejection_force/airframe_inside_area;
+volume_recoverybay = airframe_inside_area*Length_of_RecoveryBay;
+Mass_BlackPowder = (ejection_pressure*volume_recoverybay)/(T_combust*R_combust)*1000;
+
 
 %% Ejection Velocities
 
 
 
 %% Parachute Deployment Forces
+%FIX - density needs to go before so i can use it. also check units, they
+%seem wrong
+%Ck = (0.981*((7.3*2.2)^(3/2)))/29
+%Cd,rho,v,A
+Fpara_drogue = deployment_force(cd_drogue,density(2700,1),velocitiesconv(2700,1),surfacearea_drogue)
+Fpara_drogue = Fpara_drogue/21
+Fsep_drogue = ((.5*.981*108^2)*(0.66*0.97)*1)/(21)
+Fsep_main = ((.5*.9877*28.4^2)*(7.3*2.2)*1)/(21*g)
+
+
 %% E-Bay Temperature
 
 Ebay_temp = Temp_EBay(ground_wind_speed, Length_of_Ebay, airframe_outside_diameter, sigma, temperature, h_amb_air, is_wind, Emissivity,Sun);
@@ -232,11 +256,6 @@ xlabel('Time (s)', 'FontSize', 11)
 ylabel('Temp (K)', 'FontSize', 11)
 
 
-Ck = (0.981*((7.3*2.2)^(3/2)))/29
-Fsep_drogue = ((.5*.981*108^2)*(0.66*0.97)*1)/21
-Fsep_main = ((.5*.9877*28.4^2)*(7.3*2.2)*1)/21
-
-
 
 
 %% Functions
@@ -288,8 +307,14 @@ function KE = kinetic_energy(V,m)
     KE = 0.5*m*V^2;
 end
 
+
+
 function downrange_drift = drift(velocities_h,dt)
     downrange_drift = sum(velocities_h.*dt);
+end
+
+function Fparachute = deployment_force(Cd,rho,v,A)
+    Fparachute = (1/2)*Cd*rho*v^2*A;
 end
 
 function Fsep = drag_seperation(a,M,R,M1)
