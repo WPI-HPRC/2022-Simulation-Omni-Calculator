@@ -1,4 +1,4 @@
-clear; close all; clc;
+%clear; close all; clc;
 
 %To do from George: 
 %Double check units on everything, all inputs and outputs in imperial 
@@ -146,6 +146,13 @@ max_deceleration = abs(min(acclerations+g));
 F_upper_lower = drag_seperation(max_deceleration,total_mass,drag_ratio,lower_mass);
 
 
+%% Density
+
+density = zeros(length(altitudes),1);
+for(i = 1:length(altitudes))
+    density(i) = density_at_altitude(P0,g,M,altitudes(i),0,R/1000,temperature,L);
+end
+
 %% Shear Pins
 pins_upper_lower = ceil((F_upper_lower*shear_pin_safety_factor)/shear_pin_strength);
 shear_pin_breaking_force = pins_upper_lower * shear_pin_strength;   %force required to break all the shear pins
@@ -167,10 +174,10 @@ Mass_BlackPowder = (ejection_pressure*volume_recoverybay)/(T_combust*R_combust)*
 %seem wrong
 %Ck = (0.981*((7.3*2.2)^(3/2)))/29
 %Cd,rho,v,A
-Fpara_drogue = deployment_force(cd_drogue,density(2700,1),velocitiesconv(2700,1),surfacearea_drogue)
-Fpara_drogue = Fpara_drogue/21
-Fsep_drogue = ((.5*.981*108^2)*(0.66*0.97)*1)/(21)
-Fsep_main = ((.5*.9877*28.4^2)*(7.3*2.2)*1)/(21*g)
+Fpara_drogue = deployment_force(cd_drogue,density(2700,1),velocitiesconv(2700,1),surfacearea_drogue);
+Fpara_drogue = Fpara_drogue/21;
+Fsep_drogue = ((.5*.981*108^2)*(0.66*0.97)*1)/(21);
+Fsep_main = ((.5*.9877*28.4^2)*(7.3*2.2)*1)/(21*g);
 
 
 %% E-Bay Temperature
@@ -213,12 +220,6 @@ end
 
 
 
-% Density
-
-density = zeros(length(altitudes),1);
-for(i = 1:length(altitudes))
-    density(i) = density_at_altitude(P0,g,M,altitudes(i),0,R/1000,temperature,L);
-end
 
 %% Outputs
 
@@ -251,6 +252,7 @@ fprintf("External pressure range: %3.2f-%3.2fpsi\n",max(P_eRec)/6894.76,min(P_eR
 
 figure(2)
 %plot(times(1:1:length(TRec)-1),(9/5)*(TRec(1:length(TRec)-1)-273.15)+32)
+plot(times(1:1:length(TRec)),density)
 title("Temp over Flight")
 xlabel('Time (s)', 'FontSize', 11)
 ylabel('Temp (K)', 'FontSize', 11)
