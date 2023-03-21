@@ -81,7 +81,7 @@ vent_hole_presicion = 0.0000254; % How precise the vent holes can be machined (i
 %% Data Imput from RASAero
 
 RASdata = readmatrix('Flight Test2.CSV');
-altitudes = (RASdata(:,23).*0.3048)+launch_MSL*0.3048;
+altitudes = (RASdata(:,23))+launch_MSL;
 velocities = RASdata(:,18);
 velocitiesconv = (RASdata(:,18).*0.3048);
 velocities_v = RASdata(:,19);
@@ -109,6 +109,7 @@ temperature = (5/9)*(temperature-32) + 273.15; % ambient temperature of the laun
 
 internal_volume = internal_volume*(0.0254^3); % Internal volume of the rocket (m^3)
 
+altitudes = altitudes .*0.3048;
 Rocket_Surface_Area = Rocket_Surface_Area*0.00064516;
 airframe_inside_area = airframe_inside_area/1550;
 altitudes_prea = altitudes_prea.*0.3048;
@@ -164,11 +165,6 @@ ejection_pressure = ejection_force/airframe_inside_area;
 volume_recoverybay = airframe_inside_area*Length_of_RecoveryBay;
 Mass_BlackPowder = (ejection_pressure*volume_recoverybay)/(T_combust*R_combust)*1000;
 
-
-%% Ejection Velocities
-
-
-
 %% Parachute Deployment Forces
 %FIX - density needs to go before so i can use it. also check units, they
 %seem wrong
@@ -218,6 +214,8 @@ while(true)
     vent_hole_diameter = vent_hole_diameter + vent_hole_presicion;
 end
 
+[PRec2,P_iRec2,P_eRec2] = vent_hole_pressure(2*vent_hole_diameter/3,dt,vent_hole_maxTimeSteps,P0,internal_volume,k_b,Ebay_temp,temperature,altitudes_prea,rho,launch_MSL,M,g,R/1000,N_A,L);
+[PRec3,P_iRec3,P_eRec3] = vent_hole_pressure(vent_hole_diameter/3,dt,vent_hole_maxTimeSteps,P0,internal_volume,k_b,Ebay_temp,temperature,altitudes_prea,rho,launch_MSL,M,g,R/1000,N_A,L);
 
 
 
@@ -244,19 +242,28 @@ fprintf("Minimum vent hole diameter: %1.3fin\n",vent_hole_diameter*39.3701);
 fprintf("Internal pressure range: %3.2f-%3.2fpsi\n",max(P_iRec)/6894.76,min(P_iRec(1,length(P_iRec)-1))/6894.76);
 fprintf("External pressure range: %3.2f-%3.2fpsi\n",max(P_eRec)/6894.76,min(P_eRec(1,length(P_eRec)-1))/6894.76);
 
-% figure()
-% plot(t,P_iRec)
-% title("Pressure to Apogee")
-% xlabel('Time (s)', 'FontSize', 11)
-% ylabel('Internal Pressure (Pa)', 'FontSize', 11)
+
+figure()
+plot(t, P_eRec, 'color', '#000000', 'LineWidth', 1.5)
+hold on 
+plot(t, P_iRec, 'color', '#ee0022', 'LineStyle', ':', 'LineWidth', 1.5)
+plot(t, P_iRec2, 'color', '#228811', 'LineStyle', '--', 'LineWidth', 1.5)
+plot(t, P_iRec3, 'color', '#0976ff', 'LineStyle', '-.', 'LineWidth', 1.5)
+hold off
+title("Internal Pressure for Vaired Vent Hole Sizes")
+xlabel('Time (s)', 'FontSize', 11)
+ylabel('Pressure (Pa)', 'FontSize', 11)
+vent_hole1 = sprintf("%1.3fin\n",vent_hole_diameter*39.3701);
+vent_hole2 = sprintf("%1.3fin\n",(2/3)*vent_hole_diameter*39.3701);
+vent_hole3 = sprintf("%1.3fin\n",(1/3)*vent_hole_diameter*39.3701);
+legend('Ambient', vent_hole1, vent_hole2, vent_hole3)
+
 
 figure(2)
-%plot(times(1:1:length(TRec)-1),(9/5)*(TRec(1:length(TRec)-1)-273.15)+32)
-plot(times(1:1:length(TRec)),density)
+plot(times(1:length(TRec)-1),(9/5)*(TRec(1:length(TRec)-1)-273.15)+32)
 title("Temp over Flight")
 xlabel('Time (s)', 'FontSize', 11)
-ylabel('Temp (K)', 'FontSize', 11)
-
+ylabel('Temp (F)', 'FontSize', 11)
 
 
 
@@ -412,7 +419,11 @@ function xDot = vent_hole_dynamics(x,V,M_a,rho,T_0,Tout_0,P_0,k_b,A,h_0,R,g,N_A,
 end
 
 function mDot = mass_flow_rate(A,P_in,P_out,rho)
+    if P_in == P_out
+        mDot = 0;
+    else
         mDot = ((P_in-P_out)/abs(P_in-P_out))*A*sqrt(2*rho*abs(P_in-P_out));
+    end
 end
 
 function T = tempurature_at_altitude(T_0,h,h_0,L)
