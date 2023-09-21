@@ -1,13 +1,7 @@
-%clear; close all; clc;
+clear; close all; clc;
 
-%To do from George: 
-%Double check units on everything, all inputs and outputs in imperial 
-%Test with same CFD numbers (500ft/s, plus whatever pressure, density, etc. changes with alt) 
 %General To do: 
-%Cl vs alpha graph (verify finsim results)
-%Base drag (if we run out of things to do)
-%Livescript in conversion factors - do this ish later tho - T Champ
-%Ejection: All us including, Separation Forces, Shear Pins, Ejection Charges, Ejection Velocities, Parachute Deployment Velocities,
+%Ejection: All us including, Separation Forces, Ejection Velocities, Parachute Deployment Velocities,
 
 %% Rocket Constants
 
@@ -18,28 +12,34 @@ T_combust = 1833; % temperature of the ejection charge combustion products, K %%
 
 number_of_bees = 10000; % I love bees
 
-upper_mass = 22.5; % Upper Section Mass (Ib)
-lower_mass = 44.9; % Lower Section Mass (Ib) %%TODO
-Rocket_Surface_Area = 4*(91.11 + 531.65 + 26.02); % Total surfaec area of Rocket body (no fins)
+total_mass = 57.6; % (lb)
+upper_mass = 24.8; % Upper Section Mass (Ib)
+lower_mass = total_mass - upper_mass; % Lower Section Mass (Ib)
+Rocket_Surface_Area = 4*(91.11 + 531.65 + 26.02); % Total surface area of Rocket body (no fins)
 
 % Found from openRocket component analysis
-cd_lower = 0.254; % Lower Section Coeffient of Drag (cd_payloadbay + cd_ebay + cd_fincan)/(bottom half of rocket)
-cd_upper = 0.109; % Upper Section Coeffient of Drag (cd_upper + cd_nosecone)/(top half of rocket)
+cd_lower = 0.379-(0.034+0.072); % Lower Section Coeffient of Drag (cd_payloadbay + cd_ebay + cd_fincan)/(bottom half of rocket)
+cd_upper = 0.034+0.072; % Upper Section Coeffient of Drag (cd_upper + cd_nosecone)/(top half of rocket)
 
 cd_drogue = 0.97;
 cd_main = 2.2;
 surfacearea_drogue = 0.66;  %m2
 surfacearea_main = 7.3;  %m2
  
-internal_volume = 568.09; % Internal volume of the rocket (in^3)
-
 Emissivity = .84; %Assuming a white paint rocket
-Length_of_Ebay = 19; %Length of electronics bay in (in) %%Make sure this is the correct section name!!
+Length_of_Ebay = 18; %Length of electronics bay in (in)
 Length_of_RecoveryBay = 22;  %Length of recover bay (in)
 airframe_outside_diameter= 6.17; %diameter of the rocket (in)
 airframe_inside_diameter = 6;   %diameter (in)
 airframe_inside_area = pi*(airframe_inside_diameter/2)^2;
-shear_pin_strength = 178; % Tensile strength of shear pins (N) TODO
+shear_pin_strength = 97.9; % Tensile strength of shear pins (N)
+
+internal_volume_ebay = Length_of_Ebay*airframe_inside_area; % Internal volume of the ebay (in^3)
+
+% e-bay 18"
+% payload recovery 5.5"
+% payload 26"
+% payload piston length 3.27"
 
 %% Constants
 
@@ -51,8 +51,8 @@ N_A = 6.02E23; % Avagadro's Number (mol^-1)
 
 %% Environmental Constants
 
-launch_MSL = 5700; % altitude of the launch site above mean sea level, ft %%TODO
-temperature = 110; % ambient temperature of the launch site, F %%TODO
+launch_MSL = 125; % altitude of the launch site above mean sea level, ft %%TODO
+temperature = 42.05; % ambient temperature of the launch site, F %%TODO
 
 g = 9.81; % acceleration due to Earth's gravity, m/s    
 P0 = 101325; % atmospheric pressure at sea level, Pa
@@ -72,7 +72,7 @@ Sun = 1360; %w/m^2   Heat from the sun
 
 %% Settings
 
-shear_pin_safety_factor = 2; % Safety factor for number of shear pins
+shear_pin_safety_factor = 2.5; % Safety factor for number of shear pins
 is_wind = false; %Is there wind?
 dt = 0.01; % Interpolated dt of the Rasaero data (s)
 vent_hole_accuracy = 0.001; % How close internal pressure is to external pressure
@@ -97,8 +97,8 @@ acclerations_posta = varriable_past_apogee(acclerations,velocities_v);
 
 %% Conversions
 
-upper_mass = upper_mass*4.44822; % Upper Section Mass (N)
-lower_mass = lower_mass*4.44822; % Lower Section Mass (N)
+upper_mass = upper_mass*0.453592; % Upper Section Mass (kg)
+lower_mass = lower_mass*0.453592; % Lower Section Mass (kg)
 
 Length_of_Ebay = Length_of_Ebay*0.0254;
 Length_of_RecoveryBay = Length_of_RecoveryBay*.0254;
@@ -107,7 +107,7 @@ airframe_outside_diameter = airframe_outside_diameter*0.0254;
 launch_MSL = launch_MSL*0.3048; % altitude of the launch site above mean sea level, (m)
 temperature = (5/9)*(temperature-32) + 273.15; % ambient temperature of the launch site, (K)
 
-internal_volume = internal_volume*(0.0254^3); % Internal volume of the rocket (m^3)
+internal_volume_ebay = internal_volume_ebay*(0.0254^3); % Internal volume of the ebay (m^3)
 
 altitudes = altitudes .*0.3048;
 Rocket_Surface_Area = Rocket_Surface_Area*0.00064516;
@@ -140,7 +140,7 @@ downrange_drift = drift(velocities_h,Ras_dt);
 %All us including, Separation Forces, Shear Pins, Ejection Charges, Ejection Velocities, Parachute Deployment 
 %% Pre Separation
 %% Max Decelartation
-max_deceleration = abs(min(acclerations+g));
+max_deceleration = 20.12; %abs(min(acclerations+g));
 
 %% Separation Forces
    % F_upper_lower = drag_force(Cd_fin,rho_max,v_max,A_fin) + drag_force(Cd_lower,rho_max,v_max,A_lower) - drag_force(Cd_upper,rho_max,v_max,A_upper);
@@ -149,13 +149,15 @@ F_upper_lower = drag_seperation(max_deceleration,total_mass,drag_ratio,lower_mas
 
 %% Density
 
+a=density_at_altitude(P0,g,M,2700*0.3048,0,R/1000,temperature,L)
+p = pressure_at_altitude(P0,g,M,2700*0.3048,0,R/1000,tempurature_at_altitude(temperature,2700*0.3048,0,L))
 density = zeros(length(altitudes),1);
 for(i = 1:length(altitudes))
     density(i) = density_at_altitude(P0,g,M,altitudes(i),0,R/1000,temperature,L);
 end
 
 %% Shear Pins
-pins_upper_lower = ceil((F_upper_lower*shear_pin_safety_factor)/shear_pin_strength);
+pins_upper_lower = ceil(((F_upper_lower+100)*shear_pin_safety_factor)/shear_pin_strength); % TODO add parameter for irbrake drag force
 shear_pin_breaking_force = pins_upper_lower * shear_pin_strength;   %force required to break all the shear pins
 
 %% Post Separation
@@ -163,7 +165,7 @@ shear_pin_breaking_force = pins_upper_lower * shear_pin_strength;   %force requi
 ejection_force = shear_pin_breaking_force * 1.5;   %force required to break shear pins with 1.5x safety factor
 ejection_pressure = ejection_force/airframe_inside_area;
 volume_recoverybay = airframe_inside_area*Length_of_RecoveryBay;
-Mass_BlackPowder = (ejection_pressure*volume_recoverybay)/(T_combust*R_combust)*1000;
+Mass_BlackPowder = (ejection_pressure*volume_recoverybay)/(T_combust*R_combust)*1000; % g
 
 %% Parachute Deployment Forces
 %FIX - density needs to go before so i can use it. also check units, they
@@ -189,6 +191,7 @@ TRec(1) = TCurr;
 i = 2;
 while(i < length(velocities))
     T_o = tempurature_at_altitude(temperature,altitudes(i),launch_MSL,L);
+    
     k1=temperature_dynamics(TCurr,T_o,ground_wind_speed,velocities(i),Rocket_Surface_Area,Emissivity,sigma,Sun,Ca_air,M_air)*dt;
     k2=temperature_dynamics(TCurr+1/2*k1,T_o,ground_wind_speed,velocities(i),Rocket_Surface_Area,Emissivity,sigma,Sun,Ca_air,M_air)*dt;
     k3=temperature_dynamics(TCurr+1/2*k2,T_o,ground_wind_speed,velocities(i),Rocket_Surface_Area,Emissivity,sigma,Sun,Ca_air,M_air)*dt;
@@ -207,15 +210,15 @@ t = (0:dt:RASdata(length(altitudes_prea)));
 
 vent_hole_diameter = vent_hole_presicion;
 while(true)
-    [PRec,P_iRec,P_eRec] = vent_hole_pressure(vent_hole_diameter,dt,vent_hole_maxTimeSteps,P0,internal_volume,k_b,Ebay_temp,temperature,altitudes_prea,rho,launch_MSL,M,g,R/1000,N_A,L);
+    [PRec,P_iRec,P_eRec] = vent_hole_pressure(vent_hole_diameter,dt,vent_hole_maxTimeSteps,P0,internal_volume_ebay,k_b,Ebay_temp,temperature,altitudes_prea,rho,launch_MSL,M,g,R/1000,N_A,L);
     if(max(PRec)<vent_hole_accuracy)
         break;
     end
     vent_hole_diameter = vent_hole_diameter + vent_hole_presicion;
 end
 
-[PRec2,P_iRec2,P_eRec2] = vent_hole_pressure(2*vent_hole_diameter/3,dt,vent_hole_maxTimeSteps,P0,internal_volume,k_b,Ebay_temp,temperature,altitudes_prea,rho,launch_MSL,M,g,R/1000,N_A,L);
-[PRec3,P_iRec3,P_eRec3] = vent_hole_pressure(vent_hole_diameter/3,dt,vent_hole_maxTimeSteps,P0,internal_volume,k_b,Ebay_temp,temperature,altitudes_prea,rho,launch_MSL,M,g,R/1000,N_A,L);
+[PRec2,P_iRec2,P_eRec2] = vent_hole_pressure(vent_hole_diameter/3,dt,vent_hole_maxTimeSteps,P0,internal_volume_ebay,k_b,Ebay_temp,temperature,altitudes_prea,rho,launch_MSL,M,g,R/1000,N_A,L);
+[PRec3,P_iRec3,P_eRec3] = vent_hole_pressure(vent_hole_diameter/5,dt,vent_hole_maxTimeSteps,P0,internal_volume_ebay,k_b,Ebay_temp,temperature,altitudes_prea,rho,launch_MSL,M,g,R/1000,N_A,L);
 
 
 
@@ -238,7 +241,11 @@ fprintf("Number of shear pins for a safety factor of %3.2f: %2.0f\n",shear_pin_s
 fprintf("Worst case e-bay tempurature on pad: %3.2fF\n",(9/5)*(Ebay_temp-273.15)+32);
 fprintf("Min e-bay tempurature during flight: %3.2fF\n",((9/5)*((min(TRec(1:length(TRec)-1)))-273.15)+32));
 
-fprintf("Minimum vent hole diameter: %1.3fin\n",vent_hole_diameter*39.3701);
+vent_hole_area = pi*(vent_hole_diameter/2)^2;
+vent_hole_area = vent_hole_area/4;
+vent_hole_diameter = 2*sqrt(vent_hole_area/pi);
+
+fprintf("Minimum vent hole diameter: %1.3fin\n",vent_hole_diameter*39.3701); % seperate into if 4 holes and if 1 hole
 fprintf("Internal pressure range: %3.2f-%3.2fpsi\n",max(P_iRec)/6894.76,min(P_iRec(1,length(P_iRec)-1))/6894.76);
 fprintf("External pressure range: %3.2f-%3.2fpsi\n",max(P_eRec)/6894.76,min(P_eRec(1,length(P_eRec)-1))/6894.76);
 
@@ -254,8 +261,8 @@ title("Internal Pressure for Vaired Vent Hole Sizes")
 xlabel('Time (s)', 'FontSize', 11)
 ylabel('Pressure (Pa)', 'FontSize', 11)
 vent_hole1 = sprintf("%1.3fin\n",vent_hole_diameter*39.3701);
-vent_hole2 = sprintf("%1.3fin\n",(2/3)*vent_hole_diameter*39.3701);
-vent_hole3 = sprintf("%1.3fin\n",(1/3)*vent_hole_diameter*39.3701);
+vent_hole2 = sprintf("%1.3fin\n",(1/3)*vent_hole_diameter*39.3701);
+vent_hole3 = sprintf("%1.3fin\n",(1/5)*vent_hole_diameter*39.3701);
 legend('Ambient', vent_hole1, vent_hole2, vent_hole3)
 
 
